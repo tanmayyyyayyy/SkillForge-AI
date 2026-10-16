@@ -52,9 +52,9 @@ export const AnalyticsPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+      <div role="status" aria-live="polite" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <div className="spin" style={{ width: 36, height: 36, border: '3px solid rgba(211, 138, 25, 0.2)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', margin: '0 auto 1rem' }} />
+          <div aria-hidden="true" className="spin" style={{ width: 36, height: 36, border: '3px solid rgba(211, 138, 25, 0.2)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', margin: '0 auto 1rem' }} />
           <div>Aggregating progress velocity metrics...</div>
         </div>
       </div>
@@ -132,7 +132,12 @@ export const AnalyticsPage: React.FC = () => {
 
           {/* SVG Line Chart */}
           <div style={{ background: 'var(--bg-surface)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
-            <svg viewBox="0 0 400 160" style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+            {readinessHistory.length < 2 ? (
+              <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                Not enough readiness history to chart a trajectory yet. Complete assessments and roadmap tasks to build your progress curve.
+              </div>
+            ) : (
+            <svg viewBox="0 0 400 160" role="img" aria-label="Career readiness score trajectory over recorded history" style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
               {/* Grid Lines */}
               <line x1="40" y1="20" x2="380" y2="20" stroke="rgba(48, 35, 25, 0.08)" strokeDasharray="4" />
               <line x1="40" y1="70" x2="380" y2="70" stroke="rgba(48, 35, 25, 0.08)" strokeDasharray="4" />
@@ -144,7 +149,7 @@ export const AnalyticsPage: React.FC = () => {
 
               {/* Data points mapping */}
               {(() => {
-                const points = readinessHistory.length > 1 ? readinessHistory : [20, 32, 48];
+                const points = readinessHistory;
                 const xStep = (380 - 50) / (points.length - 1);
                 const polylinePoints = points.map((p, idx) => {
                   const x = 50 + idx * xStep;
@@ -178,6 +183,7 @@ export const AnalyticsPage: React.FC = () => {
                 );
               })()}
             </svg>
+            )}
           </div>
         </div>
 
