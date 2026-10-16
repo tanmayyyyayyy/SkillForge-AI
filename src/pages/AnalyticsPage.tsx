@@ -122,7 +122,7 @@ export const AnalyticsPage: React.FC = () => {
               Career Readiness Score Trajectory
             </span>
             <span className="badge badge-medium">
-              Latest: {readinessHistory.length > 0 ? readinessHistory[readinessHistory.length - 1] : 0}%
+              Latest: {readinessHistory.length > 0 ? `${readinessHistory[readinessHistory.length - 1]}%` : '—'}
             </span>
           </div>
 
@@ -201,6 +201,11 @@ export const AnalyticsPage: React.FC = () => {
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {Object.keys(gaps?.categoryBreakdown || {}).length === 0 && (
+              <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                No category coverage data yet. Select a target role and complete a gap analysis to see per-domain progress.
+              </div>
+            )}
             {Object.entries(gaps?.categoryBreakdown || {}).map(([cat, val]) => (
               <div key={cat}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', marginBottom: '0.35rem' }}>

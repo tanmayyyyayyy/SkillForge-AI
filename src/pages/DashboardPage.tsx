@@ -71,6 +71,8 @@ export const DashboardPage: React.FC = () => {
     return (
       <div
         className="editorial-canvas"
+        role="status"
+        aria-live="polite"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -81,6 +83,7 @@ export const DashboardPage: React.FC = () => {
       >
         <div style={{ textAlign: 'center' }}>
           <div
+            aria-hidden="true"
             style={{
               width: 44,
               height: 44,
