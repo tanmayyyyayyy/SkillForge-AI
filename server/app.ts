@@ -1,0 +1,85 @@
+import express, { Request, Response, NextFunction } from 'express';
+import cors from 'cors';
+import path from 'node:path';
+import fs from 'node:fs';
+
+import { authRouter } from './routes/auth.js';
+import { careersRouter } from './routes/careers.js';
+import { profileRouter } from './routes/profile.js';
+import { analysisRouter } from './routes/analysis.js';
+import { roadmapRouter } from './routes/roadmap.js';
+import { projectsRouter } from './routes/projects.js';
+import { assessmentsRouter } from './routes/assessments.js';
+import { readinessRouter } from './routes/readiness.js';
+import { aiCoachRouter } from './routes/aiCoach.js';
+import { activitiesRouter } from './routes/activities.js';
+import { resumeRouter } from './routes/resume.js';
+
+/**
+ * Builds the Express application without binding to a port.
+ * Exported separately so integration tests can mount it on an ephemeral port.
+ */
+export function createApp(): express.Express {
+  const app = express();
+
+  // CORS configuration
+  app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
+
+  app.use(express.json({ limit: '10mb' }));
+
+  // Health check endpoint
+  app.get('/api/health', (_req: Request, res: Response) => {
+    res.json({
+      status: 'ok',
+      service: 'SkillForge AI API',
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      aiProviderConfigured: !!process.env.GEMINI_API_KEY
+    });
+  });
+
+  // API Routes
+  app.use('/api/auth', authRouter);
+  app.use('/api/careers', careersRouter);
+  app.use('/api/profile', profileRouter);
+  app.use('/api/analysis', analysisRouter);
+  app.use('/api/roadmap', roadmapRouter);
+  app.use('/api/projects', projectsRouter);
+  app.use('/api/assessments', assessmentsRouter);
+  app.use('/api/readiness', readinessRouter);
+  app.use('/api/ai', aiCoachRouter);
+  app.use('/api/activities', activitiesRouter);
+  app.use('/api/resume', resumeRouter);
+
+  // JSON 404 for unknown API endpoints (never fall through to HTML)
+  app.use('/api', (_req: Request, res: Response) => {
+    res.status(404).json({ error: 'API endpoint not found.' });
+  });
+
+  // Serve static frontend files if production build exists
+  const distPath = path.resolve(process.cwd(), 'dist');
+  if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+    app.get('{*path}', (req: Request, res: Response, next: NextFunction) => {
+      if (req.path.startsWith('/api')) {
+        return next();
+      }
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  // Global error handling middleware
+  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    console.error('Unhandled Server Error:', err);
+    if (res.headersSent) {
+      return;
+    }
+    res.status(500).json({ error: 'Internal server error occurred.' });
+  });
+
+  return app;
+}
