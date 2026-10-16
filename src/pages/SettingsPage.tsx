@@ -23,12 +23,27 @@ export const SettingsPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [healthInfo, setHealthInfo] = useState<any>(null);
+  const [healthState, setHealthState] = useState<'loading' | 'ok' | 'error'>('loading');
 
   useEffect(() => {
+    let cancelled = false;
     fetch('/api/health')
-      .then(res => res.json())
-      .then(data => setHealthInfo(data))
-      .catch(() => {});
+      .then(res => {
+        if (!res.ok) throw new Error(`Health check failed with status ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (cancelled) return;
+        setHealthInfo(data);
+        setHealthState('ok');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHealthState('error');
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSavePreferences = async () => {
@@ -165,19 +180,33 @@ export const SettingsPage: React.FC = () => {
         <h3 style={{ fontSize: '1.15rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Server size={18} color="#f59e0b" /> System Diagnostics
         </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.85rem' }}>
+        <div aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.85rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid var(--border-subtle)' }}>
             <span style={{ color: 'var(--text-muted)' }}>Backend Express API Status:</span>
-            <span style={{ color: 'var(--success)', fontWeight: 600 }}>&check; {healthInfo?.status || 'Online'}</span>
+            {healthState === 'loading' && (
+              <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Checking&hellip;</span>
+            )}
+            {healthState === 'ok' && (
+              <span style={{ color: 'var(--success)', fontWeight: 600 }}>&check; {healthInfo?.status || 'Online'}</span>
+            )}
+            {healthState === 'error' && (
+              <span style={{ color: '#ef4444', fontWeight: 600 }}>&times; Unreachable</span>
+            )}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid var(--border-subtle)' }}>
             <span style={{ color: 'var(--text-muted)' }}>Database Persistence:</span>
-            <span style={{ color: 'var(--success)', fontWeight: 600 }}>&check; Transactional JSON Store Active</span>
+            <span style={{ color: healthState === 'error' ? 'var(--text-muted)' : 'var(--success)', fontWeight: 600 }}>
+              {healthState === 'error' ? 'Unknown' : 'Transactional JSON Store Active'}
+            </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0' }}>
             <span style={{ color: 'var(--text-muted)' }}>AI Provider Mode:</span>
-            <span style={{ color: healthInfo?.aiProviderConfigured ? 'var(--success)' : 'var(--color-accent)', fontWeight: 600 }}>
-              {healthInfo?.aiProviderConfigured ? 'Google Gemini 1.5 Flash (Live)' : 'Deterministic Advisory Engine (Active)'}
+            <span style={{ color: healthState === 'error' ? 'var(--text-muted)' : (healthInfo?.aiProviderConfigured ? 'var(--success)' : 'var(--color-accent)'), fontWeight: 600 }}>
+              {healthState === 'error'
+                ? 'Unknown'
+                : healthInfo?.aiProviderConfigured
+                  ? 'Google Gemini 1.5 Flash (Live)'
+                  : 'Deterministic Advisory Engine (Active)'}
             </span>
           </div>
         </div>
