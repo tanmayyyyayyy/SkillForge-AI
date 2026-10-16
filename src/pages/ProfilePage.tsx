@@ -1174,6 +1174,11 @@ export const ProfilePage: React.FC = () => {
 
               {/* Experience List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                {experiences.length === 0 && (
+                  <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', fontSize: '0.85rem' }}>
+                    No experience records yet. Add one using the form above or import from your resume.
+                  </div>
+                )}
                 {experiences.map(e => (
                   <div
                     key={e.id}
