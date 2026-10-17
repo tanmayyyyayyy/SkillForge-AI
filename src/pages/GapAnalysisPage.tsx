@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
 import { useDialogA11y } from '../hooks/useDialogA11y.js';
 import { SkillGapAnalysisResult, PriorityBadge } from '../types/index.js';
+import { Select } from '../components/ui/Select.js';
 import {
   GitCompare,
   Filter,
@@ -207,17 +208,14 @@ export const GapAnalysisPage: React.FC = () => {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Category:</span>
-          <select
-            className="form-select"
-            aria-label="Filter by skill category"
+          <Select
+            ariaLabel="Filter by skill category"
+            inline
+            size="sm"
             value={selectedCategory}
-            onChange={e => setSelectedCategory(e.target.value)}
-            style={{ padding: '0.35rem 0.75rem', fontSize: '0.82rem', width: 'auto' }}
-          >
-            {categories.map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+            onChange={v => setSelectedCategory(v)}
+            options={categories.map(c => ({ value: c, label: c }))}
+          />
         </div>
       </div>
 
@@ -364,19 +362,20 @@ export const GapAnalysisPage: React.FC = () => {
 
             <div className="form-group">
               <label className="form-label" htmlFor="gap-proficiency-select">Proficiency Level (0 to 5)</label>
-              <select
+              <Select
                 id="gap-proficiency-select"
-                className="form-select"
+                ariaLabel="Proficiency Level (0 to 5)"
                 value={editingSkill.proficiency}
-                onChange={e => setEditingSkill({ ...editingSkill, proficiency: Number(e.target.value) })}
-              >
-                <option value={0}>0 - None / Unknown</option>
-                <option value={1}>1 - Beginner (Basic syntax / exposure)</option>
-                <option value={2}>2 - Elementary (Can write simple scripts)</option>
-                <option value={3}>3 - Intermediate (Built production features)</option>
-                <option value={4}>4 - Advanced (Deep architectural knowledge)</option>
-                <option value={5}>5 - Expert (Staff-level optimization)</option>
-              </select>
+                onChange={v => setEditingSkill({ ...editingSkill, proficiency: Number(v) })}
+                options={[
+                  { value: 0, label: '0 - None / Unknown' },
+                  { value: 1, label: '1 - Beginner (Basic syntax / exposure)' },
+                  { value: 2, label: '2 - Elementary (Can write simple scripts)' },
+                  { value: 3, label: '3 - Intermediate (Built production features)' },
+                  { value: 4, label: '4 - Advanced (Deep architectural knowledge)' },
+                  { value: 5, label: '5 - Expert (Staff-level optimization)' }
+                ]}
+              />
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>

@@ -12,6 +12,7 @@ import {
 } from '../../types/index.js';
 import { FileText, X, Upload, Sparkles, Cpu, AlertTriangle, Check, ShieldCheck, Trash2 } from 'lucide-react';
 import { useDialogA11y } from '../../hooks/useDialogA11y.js';
+import { Select } from '../ui/Select.js';
 
 interface ResumeImportModalProps {
   isOpen: boolean;
@@ -329,20 +330,15 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({ isOpen, on
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}> &bull; {s.category}</span>
                         </span>
                       </label>
-                      <select
-                        className="form-select"
-                        aria-label={`Proficiency level for ${s.name}`}
-                        style={{ width: 'auto', padding: '0.2rem 0.6rem', fontSize: '0.78rem', height: 28 }}
+                      <Select
+                        ariaLabel={`Proficiency level for ${s.name}`}
+                        inline
+                        size="xs"
                         value={s.proficiency}
-                        onChange={e => setSkillLevel(s.skillId, Number(e.target.value) as ProficiencyLevel)}
+                        onChange={v => setSkillLevel(s.skillId, Number(v) as ProficiencyLevel)}
                         disabled={!s.selected}
-                      >
-                        {[1, 2, 3, 4, 5].map(l => (
-                          <option key={l} value={l}>
-                            Lvl {l}
-                          </option>
-                        ))}
-                      </select>
+                        options={[1, 2, 3, 4, 5].map(l => ({ value: l, label: `Lvl ${l}` }))}
+                      />
                     </div>
                   ))}
                 </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
+import { Select } from '../components/ui/Select.js';
 import {
   User,
   Clock,
@@ -108,32 +109,34 @@ export const SettingsPage: React.FC = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
           <div className="form-group">
             <label className="form-label" htmlFor="hrs">Weekly Available Study Hours</label>
-            <select
+            <Select
               id="hrs"
-              className="form-select"
+              ariaLabel="Weekly Available Study Hours"
               value={weeklyHours}
-              onChange={e => setWeeklyHours(Number(e.target.value))}
-            >
-              <option value={8}>8 hours/week (~1 hour daily)</option>
-              <option value={14}>14 hours/week (~2 hours daily)</option>
-              <option value={20}>20 hours/week (Semi-intensive)</option>
-              <option value={35}>35+ hours/week (Full-time intensive)</option>
-            </select>
+              onChange={v => setWeeklyHours(Number(v))}
+              options={[
+                { value: 8, label: '8 hours/week (~1 hour daily)' },
+                { value: 14, label: '14 hours/week (~2 hours daily)' },
+                { value: 20, label: '20 hours/week (Semi-intensive)' },
+                { value: 35, label: '35+ hours/week (Full-time intensive)' }
+              ]}
+            />
           </div>
 
           <div className="form-group">
             <label className="form-label" htmlFor="stylePref">Preferred Learning Style</label>
-            <select
+            <Select
               id="stylePref"
-              className="form-select"
+              ariaLabel="Preferred Learning Style"
               value={learningStyle}
-              onChange={e => setLearningStyle(e.target.value)}
-            >
-              <option value="Project-based">Project-based (Build immediately)</option>
-              <option value="Theory & Practice">Theory & Practice (Balanced)</option>
-              <option value="Documentation & Code">Documentation & Code</option>
-              <option value="Visual & Video">Visual & Video</option>
-            </select>
+              onChange={v => setLearningStyle(v)}
+              options={[
+                { value: 'Project-based', label: 'Project-based (Build immediately)' },
+                { value: 'Theory & Practice', label: 'Theory & Practice (Balanced)' },
+                { value: 'Documentation & Code', label: 'Documentation & Code' },
+                { value: 'Visual & Video', label: 'Visual & Video' }
+              ]}
+            />
           </div>
         </div>
 

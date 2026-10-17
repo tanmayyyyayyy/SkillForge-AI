@@ -59,8 +59,19 @@
   --radius-lg: 14px;
   --radius-full: 9999px;
 
-  --transition-fast: 150ms ease;
-  --transition-normal: 250ms ease;
+  /* Motion system — restrained, consistent (Apple-inspired) */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-instant: 90ms;
+  --duration-fast: 130ms;
+  --duration-base: 180ms;
+  --duration-slow: 240ms;
+  --transition-fast: 140ms var(--ease-out);
+  --transition-normal: 220ms var(--ease-out);
+
+  /* Interactive control sizing */
+  --control-height: 42px;
+  --control-height-sm: 34px;
   --header-height: 64px;
   --sidebar-width: 260px;
 }
@@ -158,51 +169,76 @@ button {
   gap: 0.6rem;
 }
 
-/* Buttons */
+/* Buttons — one consistent system across all variants */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  min-height: var(--control-height);
   padding: 0.6rem 1.2rem;
   font-size: 0.92rem;
   font-weight: 600;
+  line-height: 1.2;
   border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  background: var(--bg-surface);
+  color: var(--text-primary);
   white-space: nowrap;
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
   outline: none;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--duration-instant) var(--ease-out);
 }
 
 .btn:focus-visible {
+  outline: none;
   box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* Restrained pressed response (never relies on hover alone) */
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  transition-duration: var(--duration-instant);
 }
 
 .btn-primary {
   background: var(--primary);
   color: #ffffff;
+  border-color: var(--primary);
   box-shadow: 0 2px 8px rgba(211, 138, 25, 0.25);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 100%);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(211, 138, 25, 0.35);
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+  box-shadow: 0 4px 14px rgba(211, 138, 25, 0.38);
 }
 
 .btn-secondary {
   background: var(--bg-surface);
   color: var(--text-primary);
-  border: 1px solid var(--border-medium);
+  border-color: var(--border-medium);
 }
 
 .btn-secondary:hover:not(:disabled) {
   background: var(--bg-card-hover);
-  border-color: var(--border-medium);
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-ghost {
   background: transparent;
   color: var(--text-secondary);
+  border-color: transparent;
 }
 
 .btn-ghost:hover:not(:disabled) {
@@ -213,29 +249,59 @@ button {
 .btn-outline {
   background: transparent;
   color: var(--primary);
-  border: 1px solid var(--primary);
+  border-color: var(--primary);
 }
 
 .btn-outline:hover:not(:disabled) {
   background: var(--primary-subtle);
+  border-color: var(--primary-hover);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #ffffff;
+  border-color: var(--danger);
+  box-shadow: 0 2px 8px rgba(153, 27, 27, 0.25);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #7f1616;
+  border-color: #7f1616;
+  box-shadow: 0 4px 14px rgba(153, 27, 27, 0.35);
 }
 
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none !important;
+  box-shadow: none !important;
 }
 
 .btn-sm {
+  min-height: var(--control-height-sm);
   padding: 0.4rem 0.8rem;
   font-size: 0.82rem;
   border-radius: var(--radius-sm);
 }
 
 .btn-lg {
+  min-height: 50px;
   padding: 0.85rem 1.8rem;
   font-size: 1.05rem;
   border-radius: var(--radius-md);
+}
+
+/* Icon-only button — always pair with an aria-label */
+.btn-icon {
+  min-width: var(--control-height);
+  width: var(--control-height);
+  padding: 0;
+  border-radius: var(--radius-md);
+}
+
+.btn-icon.btn-sm {
+  min-width: var(--control-height-sm);
+  width: var(--control-height-sm);
 }
 
 /* Badges */
@@ -299,6 +365,7 @@ button {
 
 .form-input, .form-select, .form-textarea {
   width: 100%;
+  min-height: var(--control-height);
   padding: 0.65rem 0.95rem;
   background: #FAF5EC;
   border: 1px solid var(--border-medium);
@@ -307,17 +374,227 @@ button {
   font-family: inherit;
   font-size: 0.92rem;
   outline: none;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast);
 }
 
-.form-input:focus, .form-select:focus, .form-textarea:focus {
+.form-input:hover:not(:disabled),
+.form-select:hover:not(:disabled),
+.form-textarea:hover:not(:disabled) {
+  border-color: var(--border-focus);
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.form-input:disabled,
+.form-select:disabled,
+.form-textarea:disabled {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  border-color: var(--border-subtle);
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.form-input[aria-invalid="true"],
+.form-select[aria-invalid="true"],
+.form-textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-subtle);
+}
+
+/* Native select normalization (used where a native control remains) */
+.form-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.4rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23756659' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 15px;
 }
 
 .form-textarea {
   min-height: 100px;
   resize: vertical;
+}
+
+/* ==================================================
+   CUSTOM SELECT (accessible listbox dropdown)
+   ================================================== */
+.ui-select {
+  position: relative;
+  width: 100%;
+}
+
+.ui-select.is-inline {
+  width: auto;
+  display: inline-block;
+}
+
+.ui-select.is-inline .ui-select-trigger {
+  width: auto;
+}
+
+.ui-select-trigger {
+  width: 100%;
+  min-height: var(--control-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.65rem 0.95rem;
+  background: #FAF5EC;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.ui-select-trigger:hover:not(:disabled) {
+  border-color: var(--border-focus);
+}
+
+.ui-select-trigger:focus-visible {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.ui-select-trigger:disabled {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.ui-select.is-open .ui-select-trigger {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.ui-select-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-select-value.is-placeholder {
+  color: var(--text-muted);
+}
+
+.ui-select-chevron {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.ui-select.is-open .ui-select-chevron {
+  transform: rotate(180deg);
+}
+
+.ui-select-menu {
+  /* Portaled to <body>; position/size are supplied inline from the trigger rect. */
+  position: fixed;
+  z-index: 2000;
+  max-height: 296px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  animation: selectMenuIn var(--duration-fast) var(--ease-out);
+}
+
+@keyframes selectMenuIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ui-select-menu.is-up {
+  animation-name: selectMenuInUp;
+}
+
+@keyframes selectMenuInUp {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ui-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.ui-select-option.is-active {
+  background: var(--primary-subtle);
+}
+
+.ui-select-option.is-selected {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.ui-select-option.is-disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ui-select-check {
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+/* Compact variants */
+.ui-select-sm .ui-select-trigger {
+  min-height: var(--control-height-sm);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.84rem;
+}
+
+.ui-select-xs .ui-select-trigger {
+  min-height: 28px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.78rem;
+  border-radius: var(--radius-sm);
+}
+
+.ui-select-xs .ui-select-menu {
+  font-size: 0.8rem;
 }
 
 /* Progress Bars */
@@ -482,6 +759,17 @@ button {
   }
   .page-body {
     padding: 1.25rem;
+  }
+}
+
+/* Onboarding step labels — hidden on small screens, shown on wider viewports */
+.step-label-desktop {
+  display: none;
+}
+
+@media (min-width: 720px) {
+  .step-label-desktop {
+    display: block;
   }
 }
 

@@ -15,6 +15,7 @@ import {
 } from '../types/index.js';
 import { validateProfile, toCanonicalSkillId, isValidUrl } from '../utils/profileValidation.js';
 import { ResumeImportModal } from '../components/profile/ResumeImportModal.js';
+import { Select } from '../components/ui/Select.js';
 import {
   User,
   GraduationCap,
@@ -474,35 +475,37 @@ export const ProfilePage: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
               <div className="form-group">
                 <label className="form-label" htmlFor="edu">Education Level</label>
-                <select
+                <Select
                   id="edu"
-                  className="form-select"
+                  ariaLabel="Education Level"
                   value={educationLevel}
-                  onChange={e => setEducationLevel(e.target.value)}
-                >
-                  <option value="Undergraduate">Undergraduate (B.Tech / B.S. / BCA)</option>
-                  <option value="Postgraduate">Postgraduate (M.Tech / M.S. / MCA)</option>
-                  <option value="Bootcamp">Bootcamp / Technical Program</option>
-                  <option value="Self-Taught">Self-Taught / Industry Transition</option>
-                  <option value="High School">High School / Pre-University</option>
-                </select>
+                  onChange={v => setEducationLevel(v)}
+                  options={[
+                    { value: 'Undergraduate', label: 'Undergraduate (B.Tech / B.S. / BCA)' },
+                    { value: 'Postgraduate', label: 'Postgraduate (M.Tech / M.S. / MCA)' },
+                    { value: 'Bootcamp', label: 'Bootcamp / Technical Program' },
+                    { value: 'Self-Taught', label: 'Self-Taught / Industry Transition' },
+                    { value: 'High School', label: 'High School / Pre-University' }
+                  ]}
+                />
               </div>
 
               <div className="form-group">
                 <label className="form-label" htmlFor="currentYear">Current Academic Standing</label>
-                <select
+                <Select
                   id="currentYear"
-                  className="form-select"
+                  ariaLabel="Current Academic Standing"
                   value={currentAcademicYear}
-                  onChange={e => setCurrentAcademicYear(e.target.value)}
-                >
-                  <option value="Year 1">1st Year (Freshman)</option>
-                  <option value="Year 2">2nd Year (Sophomore)</option>
-                  <option value="Year 3">3rd Year (Junior)</option>
-                  <option value="Year 4">4th Year (Senior)</option>
-                  <option value="Final Year">Final Year (Graduating Soon)</option>
-                  <option value="Graduated">Graduated / Alumnus</option>
-                </select>
+                  onChange={v => setCurrentAcademicYear(v)}
+                  options={[
+                    { value: 'Year 1', label: '1st Year (Freshman)' },
+                    { value: 'Year 2', label: '2nd Year (Sophomore)' },
+                    { value: 'Year 3', label: '3rd Year (Junior)' },
+                    { value: 'Year 4', label: '4th Year (Senior)' },
+                    { value: 'Final Year', label: 'Final Year (Graduating Soon)' },
+                    { value: 'Graduated', label: 'Graduated / Alumnus' }
+                  ]}
+                />
               </div>
 
               <div className="form-group">
@@ -682,55 +685,58 @@ export const ProfilePage: React.FC = () => {
 
                 <div style={{ minWidth: 160 }}>
                   <label className="form-label" htmlFor="newSkillCategory">Category</label>
-                  <select
+                  <Select
                     id="newSkillCategory"
-                    className="form-select"
+                    ariaLabel="Category"
                     value={newSkillCategory}
-                    onChange={e => setNewSkillCategory(e.target.value)}
-                  >
-                    <option value="Programming Languages">Programming Languages</option>
-                    <option value="Machine Learning">Machine Learning</option>
-                    <option value="Deep Learning">Deep Learning</option>
-                    <option value="Data Engineering">Data Engineering</option>
-                    <option value="Data Management">Data Management</option>
-                    <option value="DevOps & Deployment">DevOps & Deployment</option>
-                    <option value="API Development">API Development</option>
-                    <option value="UI Libraries">UI Libraries</option>
-                    <option value="Mathematics">Mathematics & Stats</option>
-                    <option value="General">General / Core CS</option>
-                  </select>
+                    onChange={v => setNewSkillCategory(v)}
+                    options={[
+                      { value: 'Programming Languages', label: 'Programming Languages' },
+                      { value: 'Machine Learning', label: 'Machine Learning' },
+                      { value: 'Deep Learning', label: 'Deep Learning' },
+                      { value: 'Data Engineering', label: 'Data Engineering' },
+                      { value: 'Data Management', label: 'Data Management' },
+                      { value: 'DevOps & Deployment', label: 'DevOps & Deployment' },
+                      { value: 'API Development', label: 'API Development' },
+                      { value: 'UI Libraries', label: 'UI Libraries' },
+                      { value: 'Mathematics', label: 'Mathematics & Stats' },
+                      { value: 'General', label: 'General / Core CS' }
+                    ]}
+                  />
                 </div>
 
                 <div style={{ minWidth: 160 }}>
                   <label className="form-label" htmlFor="newSkillLevel">Proficiency Level</label>
-                  <select
+                  <Select
                     id="newSkillLevel"
-                    className="form-select"
+                    ariaLabel="Proficiency Level"
                     value={newSkillLevel}
-                    onChange={e => setNewSkillLevel(Number(e.target.value) as ProficiencyLevel)}
-                  >
-                    <option value={0}>0 - None / Novice</option>
-                    <option value={1}>1 - Beginner (Aware)</option>
-                    <option value={2}>2 - Elementary (Basic scripts)</option>
-                    <option value={3}>3 - Intermediate (Functional)</option>
-                    <option value={4}>4 - Advanced (Production-grade)</option>
-                    <option value={5}>5 - Expert (System Master)</option>
-                  </select>
+                    onChange={v => setNewSkillLevel(Number(v) as ProficiencyLevel)}
+                    options={[
+                      { value: 0, label: '0 - None / Novice' },
+                      { value: 1, label: '1 - Beginner (Aware)' },
+                      { value: 2, label: '2 - Elementary (Basic scripts)' },
+                      { value: 3, label: '3 - Intermediate (Functional)' },
+                      { value: 4, label: '4 - Advanced (Production-grade)' },
+                      { value: 5, label: '5 - Expert (System Master)' }
+                    ]}
+                  />
                 </div>
 
                 <div style={{ minWidth: 140 }}>
                   <label className="form-label" htmlFor="newSkillSource">Evidence Source</label>
-                  <select
+                  <Select
                     id="newSkillSource"
-                    className="form-select"
+                    ariaLabel="Evidence Source"
                     value={newSkillSource}
-                    onChange={e => setNewSkillSource(e.target.value as SkillEvidenceSource)}
-                  >
-                    <option value="self-reported">Self-Reported</option>
-                    <option value="course">Coursework / Class</option>
-                    <option value="project">Personal Project</option>
-                    <option value="work_experience">Internship / Job</option>
-                  </select>
+                    onChange={v => setNewSkillSource(v as SkillEvidenceSource)}
+                    options={[
+                      { value: 'self-reported', label: 'Self-Reported' },
+                      { value: 'course', label: 'Coursework / Class' },
+                      { value: 'project', label: 'Personal Project' },
+                      { value: 'work_experience', label: 'Internship / Job' }
+                    ]}
+                  />
                 </div>
 
                 <button
@@ -832,20 +838,22 @@ export const ProfilePage: React.FC = () => {
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                             <label htmlFor={`prof-${s.skillId}`} style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Proficiency:</label>
-                            <select
+                            <Select
                               id={`prof-${s.skillId}`}
-                              className="form-select"
-                              style={{ width: 'auto', padding: '0.2rem 0.6rem', fontSize: '0.8rem', height: 28 }}
+                              ariaLabel={`Proficiency for ${s.name}`}
+                              inline
+                              size="xs"
                               value={s.proficiency}
-                              onChange={e => handleUpdateSkillProficiency(s.skillId, Number(e.target.value) as ProficiencyLevel)}
-                            >
-                              <option value={0}>0 - None</option>
-                              <option value={1}>1 - Beginner</option>
-                              <option value={2}>2 - Elementary</option>
-                              <option value={3}>3 - Intermediate</option>
-                              <option value={4}>4 - Advanced</option>
-                              <option value={5}>5 - Expert</option>
-                            </select>
+                              onChange={v => handleUpdateSkillProficiency(s.skillId, Number(v) as ProficiencyLevel)}
+                              options={[
+                                { value: 0, label: '0 - None' },
+                                { value: 1, label: '1 - Beginner' },
+                                { value: 2, label: '2 - Elementary' },
+                                { value: 3, label: '3 - Intermediate' },
+                                { value: 4, label: '4 - Advanced' },
+                                { value: 5, label: '5 - Expert' }
+                              ]}
+                            />
                           </div>
                         </div>
                       </div>
@@ -912,16 +920,17 @@ export const ProfilePage: React.FC = () => {
 
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label" htmlFor="projStatus">Project Status</label>
-                      <select
+                      <Select
                         id="projStatus"
-                        className="form-select"
+                        ariaLabel="Project Status"
                         value={projStatus}
-                        onChange={e => setProjStatus(e.target.value as any)}
-                      >
-                        <option value="completed">Completed &amp; Tested</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="planned">Planned Milestone</option>
-                      </select>
+                        onChange={v => setProjStatus(v as any)}
+                        options={[
+                          { value: 'completed', label: 'Completed & Tested' },
+                          { value: 'in_progress', label: 'In Progress' },
+                          { value: 'planned', label: 'Planned Milestone' }
+                        ]}
+                      />
                     </div>
                   </div>
 
@@ -1304,37 +1313,29 @@ export const ProfilePage: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
               <div className="form-group">
                 <label className="form-label" htmlFor="targetRole">Target Career Role</label>
-                <select
+                <Select
                   id="targetRole"
-                  className="form-select"
+                  ariaLabel="Target Career Role"
                   value={targetRole}
-                  onChange={e => setTargetRole(e.target.value)}
-                >
-                  {careers.length === 0 && targetRole ? (
-                    <option value={targetRole}>{targetRole}</option>
-                  ) : (
-                    careers.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.title}
-                      </option>
-                    ))
-                  )}
-                </select>
+                  onChange={v => setTargetRole(v)}
+                  options={careers.map(c => ({ value: c.id ?? '', label: c.title ?? c.id ?? '' }))}
+                />
               </div>
 
               <div className="form-group">
                 <label className="form-label" htmlFor="completionPeriod">Target Completion Horizon</label>
-                <select
+                <Select
                   id="completionPeriod"
-                  className="form-select"
+                  ariaLabel="Target Completion Horizon"
                   value={targetCompletionPeriod}
-                  onChange={e => setTargetCompletionPeriod(e.target.value)}
-                >
-                  <option value="3 Months">3 Months (Accelerated / Sprint)</option>
-                  <option value="6 Months">6 Months (Standard Semester Track)</option>
-                  <option value="9 Months">9 Months (Comprehensive Preparation)</option>
-                  <option value="1 Year">1 Year (Long-term Mastery)</option>
-                </select>
+                  onChange={v => setTargetCompletionPeriod(v)}
+                  options={[
+                    { value: '3 Months', label: '3 Months (Accelerated / Sprint)' },
+                    { value: '6 Months', label: '6 Months (Standard Semester Track)' },
+                    { value: '9 Months', label: '9 Months (Comprehensive Preparation)' },
+                    { value: '1 Year', label: '1 Year (Long-term Mastery)' }
+                  ]}
+                />
               </div>
             </div>
 
@@ -1365,17 +1366,18 @@ export const ProfilePage: React.FC = () => {
 
             <div className="form-group">
               <label className="form-label" htmlFor="stylePref">Preferred Learning Style</label>
-              <select
+              <Select
                 id="stylePref"
-                className="form-select"
+                ariaLabel="Preferred Learning Style"
                 value={learningStyle}
-                onChange={e => setLearningStyle(e.target.value)}
-              >
-                <option value="Project-based">Project-based (Build hands-on milestone projects)</option>
-                <option value="Theory & Practice">Theory &amp; Practice (Balanced conceptual rigor + coding)</option>
-                <option value="Documentation & Code">Documentation &amp; Code (Deep dive into specs &amp; repos)</option>
-                <option value="Visual & Video">Visual &amp; Video (Diagrams, system design walk-throughs)</option>
-              </select>
+                onChange={v => setLearningStyle(v)}
+                options={[
+                  { value: 'Project-based', label: 'Project-based (Build hands-on milestone projects)' },
+                  { value: 'Theory & Practice', label: 'Theory & Practice (Balanced conceptual rigor + coding)' },
+                  { value: 'Documentation & Code', label: 'Documentation & Code (Deep dive into specs & repos)' },
+                  { value: 'Visual & Video', label: 'Visual & Video (Diagrams, system design walk-throughs)' }
+                ]}
+              />
             </div>
 
             <div className="form-group">

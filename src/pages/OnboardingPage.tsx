@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.js';
 import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
 import { StudentSkill, StudentProject, CareerRole } from '../types/index.js';
+import { Select } from '../components/ui/Select.js';
 import {
   GraduationCap,
   Code2,
@@ -205,7 +206,7 @@ export const OnboardingPage: React.FC = () => {
                 >
                   {isCompleted ? <CheckCircle2 size={18} /> : <Icon size={16} />}
                 </div>
-                <div style={{ display: 'none' }} className="step-label-desktop">
+                <div className="step-label-desktop">
                   <div style={{ fontSize: '0.8rem', fontWeight: 600, color: isCurrent ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                     {s.label}
                   </div>
@@ -241,18 +242,19 @@ export const OnboardingPage: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label" htmlFor="eduLevel">Education Level</label>
-                  <select
+                  <Select
                     id="eduLevel"
-                    className="form-select"
+                    ariaLabel="Education Level"
                     value={educationLevel}
-                    onChange={e => setEducationLevel(e.target.value)}
-                  >
-                    <option value="Undergraduate">Undergraduate (B.Tech / B.E / B.Sc)</option>
-                    <option value="Postgraduate">Postgraduate (M.Tech / M.S / MCA)</option>
-                    <option value="Bootcamp">Bootcamp / Training Program</option>
-                    <option value="Self-Taught">Self-Taught Developer</option>
-                    <option value="High School">High School Student</option>
-                  </select>
+                    onChange={v => setEducationLevel(v)}
+                    options={[
+                      { value: 'Undergraduate', label: 'Undergraduate (B.Tech / B.E / B.Sc)' },
+                      { value: 'Postgraduate', label: 'Postgraduate (M.Tech / M.S / MCA)' },
+                      { value: 'Bootcamp', label: 'Bootcamp / Training Program' },
+                      { value: 'Self-Taught', label: 'Self-Taught Developer' },
+                      { value: 'High School', label: 'High School Student' }
+                    ]}
+                  />
                 </div>
 
                 <div className="form-group">
@@ -355,18 +357,19 @@ export const OnboardingPage: React.FC = () => {
                 </div>
                 <div style={{ flex: 1, minWidth: 130 }}>
                   <label className="form-label" htmlFor="newSkillLevel">Proficiency (1-5)</label>
-                  <select
+                  <Select
                     id="newSkillLevel"
-                    className="form-select"
+                    ariaLabel="Proficiency"
                     value={newSkillLevel}
-                    onChange={e => setNewSkillLevel(Number(e.target.value))}
-                  >
-                    <option value={1}>1 - Beginner</option>
-                    <option value={2}>2 - Elementary</option>
-                    <option value={3}>3 - Intermediate</option>
-                    <option value={4}>4 - Advanced</option>
-                    <option value={5}>5 - Expert</option>
-                  </select>
+                    onChange={v => setNewSkillLevel(Number(v))}
+                    options={[
+                      { value: 1, label: '1 - Beginner' },
+                      { value: 2, label: '2 - Elementary' },
+                      { value: 3, label: '3 - Intermediate' },
+                      { value: 4, label: '4 - Advanced' },
+                      { value: 5, label: '5 - Expert' }
+                    ]}
+                  />
                 </div>
                 <button
                   type="button"
@@ -544,32 +547,34 @@ export const OnboardingPage: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label" htmlFor="hours">Weekly Learning Availability</label>
-                  <select
+                  <Select
                     id="hours"
-                    className="form-select"
+                    ariaLabel="Weekly Learning Availability"
                     value={weeklyHours}
-                    onChange={e => setWeeklyHours(Number(e.target.value))}
-                  >
-                    <option value={8}>8 hours/week (~1 hour daily)</option>
-                    <option value={14}>14 hours/week (~2 hours daily)</option>
-                    <option value={20}>20 hours/week (Semi-intensive)</option>
-                    <option value={35}>35+ hours/week (Full-time intensive)</option>
-                  </select>
+                    onChange={v => setWeeklyHours(Number(v))}
+                    options={[
+                      { value: 8, label: '8 hours/week (~1 hour daily)' },
+                      { value: 14, label: '14 hours/week (~2 hours daily)' },
+                      { value: 20, label: '20 hours/week (Semi-intensive)' },
+                      { value: 35, label: '35+ hours/week (Full-time intensive)' }
+                    ]}
+                  />
                 </div>
 
                 <div className="form-group">
                   <label className="form-label" htmlFor="style">Preferred Learning Style</label>
-                  <select
+                  <Select
                     id="style"
-                    className="form-select"
+                    ariaLabel="Preferred Learning Style"
                     value={learningStyle}
-                    onChange={e => setLearningStyle(e.target.value)}
-                  >
-                    <option value="Project-based">Project-based (Build immediately)</option>
-                    <option value="Theory & Practice">Theory & Practice (Balanced)</option>
-                    <option value="Documentation & Code">Documentation & Code (Official docs)</option>
-                    <option value="Visual & Video">Visual & Video (Diagrams & walkthroughs)</option>
-                  </select>
+                    onChange={v => setLearningStyle(v)}
+                    options={[
+                      { value: 'Project-based', label: 'Project-based (Build immediately)' },
+                      { value: 'Theory & Practice', label: 'Theory & Practice (Balanced)' },
+                      { value: 'Documentation & Code', label: 'Documentation & Code (Official docs)' },
+                      { value: 'Visual & Video', label: 'Visual & Video (Diagrams & walkthroughs)' }
+                    ]}
+                  />
                 </div>
               </div>
 
