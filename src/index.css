@@ -204,9 +204,10 @@ button {
 }
 
 /* Restrained pressed response (never relies on hover alone) */
-.btn:active:not(:disabled) {
-  transform: translateY(0) scale(0.98);
-  transition-duration: var(--duration-instant);
+.btn-primary:active:not(:disabled) {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+  color: #ffffff;
 }
 
 .btn-primary {
@@ -220,6 +221,7 @@ button {
 .btn-primary:hover:not(:disabled) {
   background-color: var(--primary-hover);
   border-color: var(--primary-hover);
+  color: #ffffff;
   box-shadow: 0 4px 14px rgba(211, 138, 25, 0.38);
 }
 
