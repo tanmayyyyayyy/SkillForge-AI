@@ -225,13 +225,16 @@ describe('Subphase 2D: API robustness & input hardening', () => {
       expect(res.body.error).toMatch(/valid http/i);
     });
 
-    it('accepts a valid repository URL and verifies skills', async () => {
+    it('accepts a valid repository URL as self-reported evidence without force-completing the project', async () => {
       const res = await api(`/api/projects/${projectId}/evidence`, {
         method: 'POST',
         body: { repoUrl: 'https://github.com/student/project', notes: 'done' }
       });
       expect(res.status).toBe(200);
-      expect(res.body.project.userStatus).toBe('completed');
+      expect(res.body.project.submittedEvidence.repoUrl).toBe('https://github.com/student/project');
+      // Subphase 2F: evidence alone must not force-complete milestones or inflate status.
+      expect(res.body.awarded).toBe(false);
+      expect(res.body.project.userStatus).not.toBe('completed');
     });
 
     it('rejects non-string evidence fields without crashing', async () => {

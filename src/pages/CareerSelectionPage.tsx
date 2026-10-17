@@ -7,12 +7,7 @@ import { useDialogA11y } from '../hooks/useDialogA11y.js';
 import { CareerRole } from '../types/index.js';
 import {
   Compass,
-  CheckCircle2,
-  TrendingUp,
-  DollarSign,
-  ArrowRight,
-  Layers,
-  Sparkles
+  CheckCircle2
 } from 'lucide-react';
 
 export const CareerSelectionPage: React.FC = () => {

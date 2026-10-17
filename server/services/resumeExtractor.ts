@@ -10,7 +10,7 @@ import { CAREER_ROLES } from '../data/careers.js';
  * that must still be reviewed by the student before saving.
  */
 
-interface LexiconEntry {
+export interface LexiconEntry {
   id: string;
   name: string;
   category: string;
@@ -111,7 +111,7 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function hasSkill(text: string, synonym: string): boolean {
+export function hasSkill(text: string, synonym: string): boolean {
   const esc = escapeRegExp(synonym);
   try {
     return new RegExp(`(?<![a-z0-9])${esc}(?![a-z0-9])`, 'i').test(text);

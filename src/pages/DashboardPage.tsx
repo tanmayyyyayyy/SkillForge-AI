@@ -114,7 +114,7 @@ export const DashboardPage: React.FC = () => {
 
   // Derive dynamic properties from real engine results
   const missingCount = gaps?.gapSkillsCount ?? (
-    gaps?.items?.filter(i => i.currentLevel < i.requiredLevel).length || 7
+    gaps?.items?.filter(i => i.currentLevel < i.requiredLevel).length ?? 0
   );
 
   // Highest priority unfulfilled gap for center puzzle piece
@@ -122,20 +122,14 @@ export const DashboardPage: React.FC = () => {
     .filter(i => i.currentLevel < i.requiredLevel)
     .sort((a, b) => b.priorityScore - a.priorityScore)?.[0];
 
-  const featuredSkillName = topGap?.name || 'Statistics for ML';
+  const featuredSkillName = topGap?.name || '';
 
-  // Role title from gap analysis or user profile
-  const roleTitle = gaps?.roleTitle || (
-    profile?.targetRole === 'aiml' ? 'Machine Learning Engineer' :
-    profile?.targetRole === 'sde' ? 'Full Stack Developer' :
-    profile?.targetRole === 'devops' ? 'DevOps & Cloud Engineer' :
-    profile?.targetRole === 'data' ? 'Data Scientist' :
-    'Machine Learning Engineer'
-  );
+  // Role title comes from the gap analysis engine; fall back to a neutral label
+  const roleTitle = gaps?.roleTitle || 'Your Target Role';
 
   // Education info from profile
   const educationInfo = profile ? (
-    `${profile.degree || profile.educationLevel || 'B.Tech CSE'} · Year ${profile.graduationYear ? (profile.graduationYear - 2023) : 3}`
+    `${profile.degree || profile.educationLevel || 'B.Tech CSE'}${profile.currentAcademicYear ? ` · ${profile.currentAcademicYear}` : ''}`
   ) : 'B.Tech CSE · Year 3';
 
   // Top recommended project for the weekly open-book
@@ -174,7 +168,7 @@ export const DashboardPage: React.FC = () => {
           {/* Left: Circular Skill Gap Metric */}
           <SkillGapCircle
             missingCount={missingCount}
-            totalGaps={gaps?.totalSkillsCount || 10}
+            totalGaps={gaps?.totalSkillsCount || missingCount}
           />
 
           {/* Center: Puzzle-Inspired Featured Skill Visualization */}
@@ -198,7 +192,7 @@ export const DashboardPage: React.FC = () => {
         <WeeklyPlanBook
           project={activeProject}
           roadmap={roadmap}
-          weeklyHours={profile?.weeklyHours || 15}
+          weeklyHours={profile?.weeklyHours ?? 15}
           onToggleMilestone={handleToggleMilestone}
           onPlanAdjusted={loadDashboardData}
         />

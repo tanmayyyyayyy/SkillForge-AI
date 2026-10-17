@@ -6,15 +6,15 @@ import {
   LearningActivityLog,
   SkillGapAnalysisResult
 } from '../types/index.js';
+import { currentStreak, hoursLoggedSince } from '../utils/activityMetrics.js';
 import {
-  BarChart3,
   TrendingUp,
   Clock,
-  CheckCircle2,
   Calendar,
   Layers,
   Award,
-  Milestone
+  Milestone,
+  Flame
 } from 'lucide-react';
 
 export const AnalyticsPage: React.FC = () => {
@@ -22,23 +22,33 @@ export const AnalyticsPage: React.FC = () => {
   const [roadmap, setRoadmap] = useState<RoadmapResult | null>(null);
   const [gaps, setGaps] = useState<SkillGapAnalysisResult | null>(null);
   const [activities, setActivities] = useState<LearningActivityLog[]>([]);
+  const [assessments, setAssessments] = useState<Array<{ passed?: boolean }>>([]);
+  const [weekMetrics, setWeekMetrics] = useState<{ hours: number; streak: number }>({ hours: 0, streak: 0 });
   const [readinessHistory, setReadinessHistory] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchAnalytics = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [roadmapRes, gapsRes, activitiesRes, readinessRes] = await Promise.all([
+      const [roadmapRes, gapsRes, activitiesRes, readinessRes, assessmentsRes] = await Promise.all([
         api.roadmap.get(),
         api.analysis.get(),
         api.activities.getAll(),
-        api.readiness.get()
+        api.readiness.get(),
+        api.assessments.getAll()
       ]);
 
       setRoadmap(roadmapRes.roadmap);
       setGaps(gapsRes.analysis);
       setActivities(activitiesRes.activities);
       setReadinessHistory(readinessRes.history || []);
+      setAssessments(assessmentsRes.assessments || []);
+
+      const now = new Date();
+      setWeekMetrics({
+        hours: hoursLoggedSince(activitiesRes.activities, new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)),
+        streak: currentStreak(activitiesRes.activities, now)
+      });
     } catch (err: any) {
       toast.error(err.message || 'Failed to load progress analytics.');
     } finally {
@@ -62,6 +72,9 @@ export const AnalyticsPage: React.FC = () => {
   }
 
   const totalHoursLogged = activities.reduce((sum, a) => sum + a.hoursSpent, 0);
+  const passedAssessments = assessments.filter(a => a.passed).length;
+  const hoursLast7Days = weekMetrics.hours;
+  const streak = weekMetrics.streak;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -69,7 +82,7 @@ export const AnalyticsPage: React.FC = () => {
       <div>
         <h1 style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Progress & velocity analytics</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', marginTop: '0.3rem' }}>
-          Real-time tracking of completed roadmap tasks, hours invested, and readiness trajectory.
+          Tracking of completed roadmap tasks, logged hours, and readiness trajectory.
         </p>
       </div>
 
@@ -77,13 +90,13 @@ export const AnalyticsPage: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
         <div className="card" style={{ background: 'var(--bg-surface)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            <Clock size={16} color="var(--primary)" /> Total Hours Invested
+            <Clock size={16} color="var(--primary)" /> Hours Logged (est.)
           </div>
           <div style={{ fontSize: '2.2rem', fontWeight: 800, fontFamily: 'var(--font-display)', marginTop: '0.3rem' }}>
             {totalHoursLogged.toFixed(1)}h
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
-            Across {activities.length} recorded milestones
+            {activities.length === 0 ? 'No activity recorded yet' : `Across ${activities.length} recorded ${activities.length === 1 ? 'activity' : 'activities'}`}
           </div>
         </div>
 
@@ -95,19 +108,35 @@ export const AnalyticsPage: React.FC = () => {
             {roadmap?.completedTasks ?? 0} / {roadmap?.totalTasks ?? 0}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
-            {roadmap?.overallProgressPercentage}% Roadmap Complete
+            {roadmap?.overallProgressPercentage ?? 0}% Roadmap Complete
           </div>
         </div>
 
         <div className="card" style={{ background: 'var(--bg-surface)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            <Award size={16} color="var(--color-accent)" /> Verified Assessments
+            <Award size={16} color="var(--color-accent)" /> Passed Assessments
           </div>
           <div style={{ fontSize: '2.2rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--color-accent)', marginTop: '0.3rem' }}>
-            {activities.filter(a => a.activityType === 'assessment').length}
+            {passedAssessments}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
-            Certified technical competencies
+            Skills verified via technical assessment
+          </div>
+        </div>
+
+        <div className="card" style={{ background: 'var(--bg-surface)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            <Flame size={16} color="#e07b39" /> Last 7 Days
+          </div>
+          <div style={{ fontSize: '2.2rem', fontWeight: 800, fontFamily: 'var(--font-display)', marginTop: '0.3rem' }}>
+            {activities.length === 0 ? '—' : `${hoursLast7Days.toFixed(1)}h`}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+            {activities.length === 0
+              ? 'Log activity to start building a streak'
+              : streak > 0
+                ? `${streak}-day activity streak`
+                : 'No active streak'}
           </div>
         </div>
       </div>
@@ -214,7 +243,15 @@ export const AnalyticsPage: React.FC = () => {
                     {val.percentage}%
                   </span>
                 </div>
-                <div className="progress-container" style={{ height: 8 }}>
+                <div
+                  className="progress-container"
+                  role="progressbar"
+                  aria-label={`${cat} category coverage`}
+                  aria-valuenow={val.percentage}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  style={{ height: 8 }}
+                >
                   <div
                     className={`progress-bar ${val.percentage >= 70 ? 'progress-bar-success' : val.percentage >= 40 ? 'progress-bar-warning' : 'progress-bar-danger'}`}
                     style={{ width: `${val.percentage}%` }}
@@ -231,10 +268,10 @@ export const AnalyticsPage: React.FC = () => {
         <div className="card-header">
           <span className="card-title">
             <Calendar size={18} color="var(--color-accent)" />
-            Verified Activity Log
+            Activity Log
           </span>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Real-time audit trail of completed tasks & milestones
+            Chronological audit trail of recorded learning activity
           </span>
         </div>
 

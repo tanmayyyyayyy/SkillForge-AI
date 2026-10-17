@@ -3,18 +3,13 @@ import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
 import { RoadmapResult, RoadmapTask } from '../types/index.js';
 import {
-  Milestone,
   CheckCircle2,
   Circle,
-  Clock,
   BookOpen,
-  Code2,
   ExternalLink,
   Edit,
   Save,
-  Layers,
   Sparkles,
-  ArrowRight,
   Check
 } from 'lucide-react';
 
@@ -168,7 +163,15 @@ export const RoadmapPage: React.FC = () => {
             </span>
           </div>
 
-          <div className="progress-container" style={{ height: 7, marginBottom: '0.6rem', background: 'var(--color-progress-track)' }}>
+          <div
+            className="progress-container"
+            role="progressbar"
+            aria-label="Roadmap overall progress"
+            aria-valuenow={roadmap?.overallProgressPercentage ?? 0}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            style={{ height: 7, marginBottom: '0.6rem', background: 'var(--color-progress-track)' }}
+          >
             <div
               className="progress-bar"
               style={{

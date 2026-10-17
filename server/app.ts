@@ -14,6 +14,8 @@ import { readinessRouter } from './routes/readiness.js';
 import { aiCoachRouter } from './routes/aiCoach.js';
 import { activitiesRouter } from './routes/activities.js';
 import { resumeRouter } from './routes/resume.js';
+import { jobDescriptionRouter } from './routes/jd.js';
+import { weeklyPlanRouter } from './routes/weeklyPlan.js';
 
 /**
  * Builds the Express application without binding to a port.
@@ -23,8 +25,24 @@ export function createApp(): express.Express {
   const app = express();
 
   // CORS configuration
+  const rawOrigins = process.env.CLIENT_ORIGIN || process.env.CORS_ORIGIN;
+  const allowedOrigins = rawOrigins
+    ? rawOrigins.split(',').map(o => o.trim()).filter(Boolean)
+    : [];
+
   app.use(cors({
-    origin: '*',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, same-origin server requests)
+      if (!origin) return callback(null, true);
+      // In development or when no strict origins configured, allow all
+      if (allowedOrigins.length === 0 || allowedOrigins.includes('*') || process.env.NODE_ENV !== 'production') {
+        return callback(null, true);
+      }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      callback(null, false);
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
   }));
@@ -38,6 +56,7 @@ export function createApp(): express.Express {
       service: 'SkillForge AI API',
       version: '1.0.0',
       timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
       aiProviderConfigured: !!process.env.GEMINI_API_KEY
     });
   });
@@ -54,6 +73,8 @@ export function createApp(): express.Express {
   app.use('/api/ai', aiCoachRouter);
   app.use('/api/activities', activitiesRouter);
   app.use('/api/resume', resumeRouter);
+  app.use('/api/jd', jobDescriptionRouter);
+  app.use('/api/weekly-plan', weeklyPlanRouter);
 
   // JSON 404 for unknown API endpoints (never fall through to HTML)
   app.use('/api', (_req: Request, res: Response) => {

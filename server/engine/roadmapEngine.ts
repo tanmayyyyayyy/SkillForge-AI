@@ -78,7 +78,11 @@ export function generateRoadmap(
         status: initialStatus,
         completionPercentage: initialPercentage,
         userNotes: initialNotes,
-        completedAt: existing?.completedAt || (initialStatus === 'completed' ? new Date().toISOString() : undefined)
+        // Only a genuine stored completion carries a timestamp. A skill that is
+        // merely already-mastered (auto-marked complete, never worked on by the
+        // student) must not look like work completed on a particular date, so
+        // the weekly planner cannot credit it as hours done "this week".
+        completedAt: existing?.completedAt
       };
 
       tasksForStage.push(task);

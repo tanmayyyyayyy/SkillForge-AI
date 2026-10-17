@@ -6,7 +6,9 @@ import {
   User,
   Compass,
   GitCompare,
+  FileSearch,
   Milestone,
+  CalendarDays,
   Bot,
   FolderGit2,
   Award,
@@ -14,7 +16,6 @@ import {
   FileText,
   Settings,
   LogOut,
-  Layers,
   ChevronRight
 } from 'lucide-react';
 
@@ -28,7 +29,9 @@ export const Sidebar: React.FC = () => {
     { to: '/profile', label: 'Student Profile', icon: User },
     { to: '/careers', label: 'Career Selection', icon: Compass },
     { to: '/analysis', label: 'Skill Gap Analysis', icon: GitCompare },
+    { to: '/jd-analyzer', label: 'Job Description Analyzer', icon: FileSearch },
     { to: '/roadmap', label: 'Learning Roadmap', icon: Milestone },
+    { to: '/weekly-planner', label: 'Weekly Planner', icon: CalendarDays },
     { to: '/ai-coach', label: 'AI Career Coach', icon: Bot },
     { to: '/projects', label: 'Project Portfolio', icon: FolderGit2 },
     { to: '/assessments', label: 'Skill Verification', icon: Award },
@@ -119,6 +122,7 @@ export const Sidebar: React.FC = () => {
       {/* Navigation Links */}
       <nav
         className={`sidebar-nav ${mobileMenuOpen ? 'mobile-open' : ''}`}
+        aria-label="Primary"
         style={{
           flex: 1,
           padding: '1rem 0.75rem',
@@ -216,6 +220,7 @@ export const Sidebar: React.FC = () => {
           className="btn btn-ghost btn-sm"
           style={{ padding: '0.4rem', color: 'var(--text-muted)' }}
           title="Sign Out"
+          aria-label="Sign Out"
         >
           <LogOut size={16} />
         </button>

@@ -8,14 +8,19 @@ import {
   ProjectRecommendation,
   SkillAssessment,
   AssessmentResult,
+  AssessmentAttemptSummary,
+  AssessmentAttemptView,
   CareerReadinessScore,
   LearningActivityLog,
   AiCoachMessage,
-  ResumeExtractionResult
+  ResumeExtractionResult,
+  ReadinessReportPayload,
+  JobDescriptionAnalysis,
+  WeeklyPlan
 } from '../types/index.js';
 import { toUserMessage } from '../utils/errorMessage.js';
 
-const API_BASE = '/api';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '') || '/api';
 
 export const UNAUTHORIZED_EVENT = 'skillforge:unauthorized';
 
@@ -67,6 +72,44 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 
   return data as T;
+}
+
+/**
+ * Fetches a binary file (e.g. the readiness PDF) with the auth token attached.
+ * Mirrors `request`'s 401 handling but returns a Blob plus the server-provided
+ * filename instead of parsing JSON.
+ */
+async function requestFile(endpoint: string): Promise<{ blob: Blob; filename: string | null }> {
+  const token = getAuthToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, { headers });
+  } catch (err) {
+    throw new Error(toUserMessage(err, 'Network error: could not reach the server.'));
+  }
+
+  if (!response.ok) {
+    if (response.status === 401 && token) {
+      setAuthToken(null);
+      window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT));
+    }
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const data = await response.json();
+      if (data?.error) message = data.error;
+    } catch {
+      // Non-JSON error body; keep the status-based message.
+    }
+    throw new Error(message);
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const match = /filename="?([^";]+)"?/i.exec(disposition);
+  return { blob, filename: match ? match[1] : null };
 }
 
 export const api = {
@@ -156,7 +199,20 @@ export const api = {
     getAll: () =>
       request<{ assessments: Array<any> }>('/assessments'),
     getQuestions: (skillId: string) =>
-      request<{ assessment: SkillAssessment }>(`/assessments/${skillId}`),
+      request<{ assessment: SkillAssessment; attempts: AssessmentAttemptSummary[] }>(`/assessments/${skillId}`),
+    startAttempt: (skillId: string) =>
+      request<{ attempt: AssessmentAttemptView }>(`/assessments/${skillId}/attempts`, {
+        method: 'POST'
+      }),
+    listAttempts: (skillId: string) =>
+      request<{ attempts: AssessmentAttemptSummary[] }>(`/assessments/${skillId}/attempts`),
+    getAttempt: (attemptId: string) =>
+      request<{ attempt: AssessmentAttemptView | AssessmentAttemptSummary; result?: AssessmentResult }>(`/assessments/attempts/${attemptId}`),
+    submitAttempt: (attemptId: string, answers: Record<string, number>) =>
+      request<{ result: AssessmentResult; gradedQuestions: any[]; message: string; alreadyGraded?: boolean }>(`/assessments/attempts/${attemptId}/submit`, {
+        method: 'POST',
+        body: JSON.stringify({ answers })
+      }),
     submit: (skillId: string, answers: Record<string, number>) =>
       request<{ result: AssessmentResult; gradedQuestions: any[]; message: string }>(`/assessments/${skillId}/submit`, {
         method: 'POST',
@@ -169,7 +225,9 @@ export const api = {
     get: () =>
       request<{ readiness: CareerReadinessScore; history: number[] }>('/readiness'),
     getReport: () =>
-      request<{ report: any }>('/readiness/report')
+      request<{ report: ReadinessReportPayload }>('/readiness/report'),
+    downloadReportPdf: () =>
+      requestFile('/readiness/report/pdf')
   },
 
   // AI Coach
@@ -198,5 +256,40 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ contentBase64, fileName })
       })
+  },
+
+  // Job Description Analyzer
+  jd: {
+    getConfig: () =>
+      request<{ minChars: number; maxChars: number; aiConfigured: boolean }>('/jd/config'),
+    analyze: (description: string) =>
+      request<{ analysis: JobDescriptionAnalysis }>('/jd/analyze', {
+        method: 'POST',
+        body: JSON.stringify({ description })
+      })
+  },
+
+  // Intelligent Weekly Learning Planner
+  weeklyPlan: {
+    get: () =>
+      request<{ plan: WeeklyPlan }>('/weekly-plan'),
+    regenerate: (availableHours?: number) =>
+      request<{ plan: WeeklyPlan; message: string }>('/weekly-plan/regenerate', {
+        method: 'POST',
+        body: JSON.stringify(availableHours === undefined ? {} : { availableHours })
+      })
+  },
+
+  // System Health Diagnostics
+  health: {
+    get: () =>
+      request<{
+        status: string;
+        service: string;
+        version: string;
+        timestamp: string;
+        environment?: string;
+        aiProviderConfigured: boolean;
+      }>('/health')
   }
 };

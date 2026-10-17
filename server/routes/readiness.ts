@@ -1,34 +1,24 @@
 import { Router, Response } from 'express';
-import { db } from '../db/store.js';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.js';
-import { CAREER_ROLES } from '../data/careers.js';
-import { calculateCareerReadiness } from '../engine/readinessEngine.js';
-import { calculateSkillGaps } from '../engine/gapEngine.js';
-import { generateRoadmap } from '../engine/roadmapEngine.js';
+import { computeReadinessForUser, buildReadinessReport } from '../services/readinessService.js';
+import { generateReadinessReportPdf } from '../services/pdf/reportPdf.js';
 
 export const readinessRouter = Router();
 
-// Get current readiness score and breakdown
+// Get current readiness score and breakdown.
+// The score is derived on read from the canonical engine and the observed value
+// is logged to history (deduped). Reading never inflates the score itself.
 readinessRouter.get('/', authMiddleware, (req: AuthenticatedRequest, res: Response): void => {
   try {
-    const profile = db.getProfile(req.userId!);
-    if (!profile) {
+    const snapshot = computeReadinessForUser(req.userId!);
+    if (!snapshot) {
       res.status(404).json({ error: 'Profile not found.' });
       return;
     }
 
-    const role = CAREER_ROLES.find(r => r.id === profile.targetRole) || CAREER_ROLES[0];
-    const assessments = db.getAssessments(req.userId!);
-    const projects = db.getProjects(req.userId!);
-    const history = db.getReadinessHistory(req.userId!);
-    const previousScore = history.length > 1 ? history[history.length - 2] : 0;
-
-    const readiness = calculateCareerReadiness(profile, role, assessments, projects, previousScore);
-    db.recordReadinessScore(req.userId!, readiness.overallScore);
-
     res.json({
-      readiness,
-      history: db.getReadinessHistory(req.userId!)
+      readiness: snapshot.readiness,
+      history: snapshot.history
     });
   } catch (err) {
     console.error('Error calculating readiness:', err);
@@ -36,67 +26,53 @@ readinessRouter.get('/', authMiddleware, (req: AuthenticatedRequest, res: Respon
   }
 });
 
-// Comprehensive Readiness Report payload (for Report page and Print-to-PDF)
+// Comprehensive Readiness Report payload (for the Report page).
+// Uses the exact same canonical readiness snapshot as the dashboard so the two
+// views can never disagree on score, breakdown, or delta.
 readinessRouter.get('/report', authMiddleware, (req: AuthenticatedRequest, res: Response): void => {
   try {
-    const profile = db.getProfile(req.userId!);
-    if (!profile) {
+    const report = buildReadinessReport(req.userId!);
+    if (!report) {
+      res.status(404).json({ error: 'Profile not found.' });
+      return;
+    }
+    res.json({ report });
+  } catch (err) {
+    console.error('Error generating readiness report:', err);
+    res.status(500).json({ error: 'Failed to generate readiness report.' });
+  }
+});
+
+// Downloadable PDF of the same report. The PDF is rendered server-side from the
+// exact same canonical payload as `/report` — the client never supplies data or
+// readiness values, and can only ever download its own authenticated report.
+readinessRouter.get('/report/pdf', authMiddleware, (req: AuthenticatedRequest, res: Response): void => {
+  try {
+    const report = buildReadinessReport(req.userId!);
+    if (!report) {
       res.status(404).json({ error: 'Profile not found.' });
       return;
     }
 
-    const role = CAREER_ROLES.find(r => r.id === profile.targetRole) || CAREER_ROLES[0];
-    const assessments = db.getAssessments(req.userId!);
-    const projects = db.getProjects(req.userId!);
-    const gaps = calculateSkillGaps(profile, role);
-    const existingTasks = db.getRoadmapTasks(req.userId!);
-    const roadmap = generateRoadmap(profile, role, gaps, existingTasks);
+    const pdf = generateReadinessReportPdf(report);
 
-    const history = db.getReadinessHistory(req.userId!);
-    const previousScore = history.length > 1 ? history[history.length - 2] : 0;
-    const readiness = calculateCareerReadiness(profile, role, assessments, projects, previousScore);
+    const nameSlug =
+      (report.student.fullName || 'candidate')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'candidate';
+    const dateSlug = new Date(report.generatedAt).toISOString().slice(0, 10);
 
-    res.json({
-      report: {
-        student: {
-          fullName: profile.fullName,
-          degree: profile.degree,
-          educationLevel: profile.educationLevel,
-          graduationYear: profile.graduationYear,
-          weeklyHours: profile.weeklyHours,
-          learningStyle: profile.preferredLearningStyle,
-          targetCompanies: profile.targetCompanies
-        },
-        targetCareer: {
-          id: role.id,
-          title: role.title,
-          category: role.category,
-          salaryRange: role.averageStartingSalary,
-          marketDemand: role.marketDemand
-        },
-        readiness,
-        gapSummary: {
-          totalSkills: gaps.totalSkillsCount,
-          masteredSkills: gaps.masteredSkillsCount,
-          criticalGaps: gaps.criticalGapsCount,
-          estimatedHours: gaps.totalEstimatedHours,
-          coveragePercentage: gaps.overallCoveragePercentage,
-          topGaps: gaps.items.filter(i => i.gap > 0).slice(0, 5)
-        },
-        roadmapProgress: {
-          totalTasks: roadmap.totalTasks,
-          completedTasks: roadmap.completedTasks,
-          inProgressTasks: roadmap.inProgressTasks,
-          progressPercentage: roadmap.overallProgressPercentage,
-          stages: roadmap.stages
-        },
-        verifiedAssessments: assessments.filter(a => a.passed),
-        portfolioProjects: projects.filter(p => p.userStatus === 'completed' || p.userStatus === 'in_progress'),
-        generatedAt: new Date().toISOString()
-      }
-    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="skillforge-readiness-${nameSlug}-${dateSlug}.pdf"`
+    );
+    res.setHeader('Content-Length', String(pdf.length));
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(pdf);
   } catch (err) {
-    console.error('Error generating readiness report:', err);
-    res.status(500).json({ error: 'Failed to generate readiness report.' });
+    console.error('Error generating readiness report PDF:', err);
+    res.status(500).json({ error: 'Failed to generate the readiness report PDF.' });
   }
 });

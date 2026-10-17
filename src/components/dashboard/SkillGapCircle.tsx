@@ -6,7 +6,7 @@ interface SkillGapCircleProps {
   totalGaps?: number;
 }
 
-export const SkillGapCircle: React.FC<SkillGapCircleProps> = ({ missingCount, totalGaps = 10 }) => {
+export const SkillGapCircle: React.FC<SkillGapCircleProps> = ({ missingCount, totalGaps: _totalGaps = 10 }) => {
   return (
     <Link to="/analysis" style={{ textDecoration: 'none', color: 'inherit' }} title="View Detailed Gap Analysis">
       <div className="editorial-metric-circle editorial-circle-left">

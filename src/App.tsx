@@ -15,7 +15,9 @@ const DashboardPage = React.lazy(() => import('./pages/DashboardPage.js').then(m
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage.js').then(m => ({ default: m.ProfilePage })));
 const CareerSelectionPage = React.lazy(() => import('./pages/CareerSelectionPage.js').then(m => ({ default: m.CareerSelectionPage })));
 const GapAnalysisPage = React.lazy(() => import('./pages/GapAnalysisPage.js').then(m => ({ default: m.GapAnalysisPage })));
+const JdAnalyzerPage = React.lazy(() => import('./pages/JdAnalyzerPage.js').then(m => ({ default: m.JdAnalyzerPage })));
 const RoadmapPage = React.lazy(() => import('./pages/RoadmapPage.js').then(m => ({ default: m.RoadmapPage })));
+const WeeklyPlannerPage = React.lazy(() => import('./pages/WeeklyPlannerPage.js').then(m => ({ default: m.WeeklyPlannerPage })));
 const AiCoachPage = React.lazy(() => import('./pages/AiCoachPage.js').then(m => ({ default: m.AiCoachPage })));
 const ProjectsPage = React.lazy(() => import('./pages/ProjectsPage.js').then(m => ({ default: m.ProjectsPage })));
 const AssessmentsPage = React.lazy(() => import('./pages/AssessmentsPage.js').then(m => ({ default: m.AssessmentsPage })));
@@ -115,11 +117,33 @@ const AppRoutes: React.FC = () => {
         />
 
         <Route
+          path="/jd-analyzer"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <JdAnalyzerPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/roadmap"
           element={
             <ProtectedRoute>
               <AppLayout>
                 <RoadmapPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/weekly-planner"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <WeeklyPlannerPage />
               </AppLayout>
             </ProtectedRoute>
           }

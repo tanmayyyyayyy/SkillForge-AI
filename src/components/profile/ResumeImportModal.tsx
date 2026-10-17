@@ -11,6 +11,7 @@ import {
   ProficiencyLevel
 } from '../../types/index.js';
 import { FileText, X, Upload, Sparkles, Cpu, AlertTriangle, Check, ShieldCheck, Trash2 } from 'lucide-react';
+import { useDialogA11y } from '../../hooks/useDialogA11y.js';
 
 interface ResumeImportModalProps {
   isOpen: boolean;
@@ -39,8 +40,6 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({ isOpen, on
   const [draftExperience, setDraftExperience] = useState<Selectable<StudentExperience>[]>([]);
   const [draftCerts, setDraftCerts] = useState<Selectable<StudentCertification>[]>([]);
 
-  if (!isOpen) return null;
-
   const resetState = () => {
     setResult(null);
     setFileName('');
@@ -56,6 +55,10 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({ isOpen, on
     resetState();
     onClose();
   };
+
+  const dialogRef = useDialogA11y<HTMLDivElement>(handleClose, isOpen);
+
+  if (!isOpen) return null;
 
   const loadDrafts = (res: ResumeExtractionResult) => {
     setDraftSkills(res.extraction.skills.map(s => ({ ...s, selected: true })));
@@ -185,6 +188,7 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({ isOpen, on
       aria-labelledby="modal-resume-title"
     >
       <div
+        ref={dialogRef}
         className="editorial-modal-card"
         onClick={e => e.stopPropagation()}
         style={{ maxWidth: 820, maxHeight: '88vh', overflowY: 'auto' }}
@@ -327,6 +331,7 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({ isOpen, on
                       </label>
                       <select
                         className="form-select"
+                        aria-label={`Proficiency level for ${s.name}`}
                         style={{ width: 'auto', padding: '0.2rem 0.6rem', fontSize: '0.78rem', height: 28 }}
                         value={s.proficiency}
                         onChange={e => setSkillLevel(s.skillId, Number(e.target.value) as ProficiencyLevel)}
@@ -357,7 +362,7 @@ export const ResumeImportModal: React.FC<ResumeImportModalProps> = ({ isOpen, on
                         {p.description && (
                           <span style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{p.description}</span>
                         )}
-                        {p.technologies.length > 0 && (
+                        {p.technologies && p.technologies.length > 0 && (
                           <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                             Tech: {p.technologies.join(', ')}
                           </span>

@@ -12,7 +12,9 @@ import { CareerRole, StudentProfile, AssessmentResult, ProjectRecommendation, Ca
  *    Each passed assessment contributes proportionally to its skill's role importance.
  * 
  * 3. Practical Project Evidence Bonus (25% max):
- *    Verified completed milestone projects addressing core role skills with submitted evidence URL.
+ *    Completed milestone projects addressing core role skills with submitted
+ *    (self-reported) evidence URL, plus completed profile projects with a repo link.
+ *    Submitted links are not independently verified.
  * 
  * Total Score = Math.round(Base Skill Coverage + Assessment Bonus + Project Evidence Bonus)
  */
@@ -90,7 +92,7 @@ export function calculateCareerReadiness(
   const projectEvidenceBonus = Math.min(25, Math.round(rawProjectBonus * 10) / 10);
 
   if (totalValidProjects > 0) {
-    positiveFactors.push(`${totalValidProjects} portfolio project(s) with verified repository / live demo links`);
+    positiveFactors.push(`${totalValidProjects} portfolio project(s) with submitted repository / live demo links (self-reported)`);
   }
 
   const overallScore = Math.min(100, Math.round(skillCoverageScore + assessmentBonus + projectEvidenceBonus));
@@ -118,7 +120,7 @@ export function calculateCareerReadiness(
   // Suggest project milestone completion
   if (totalValidProjects < 2) {
     improvementSuggestions.push({
-      action: `Complete and submit verified evidence (GitHub / Demo URL) for a recommended portfolio project.`,
+      action: `Complete and submit evidence (GitHub / Demo URL) for a recommended portfolio project.`,
       potentialGain: 10,
       type: 'project'
     });

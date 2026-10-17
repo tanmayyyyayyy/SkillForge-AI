@@ -3,15 +3,11 @@ import { useAuth } from '../context/AuthContext.js';
 import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
 import {
-  Settings,
   User,
   Clock,
   Sparkles,
   RotateCcw,
-  ShieldCheck,
-  Server,
-  Activity,
-  CheckCircle2
+  Server
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
@@ -27,11 +23,7 @@ export const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/health')
-      .then(res => {
-        if (!res.ok) throw new Error(`Health check failed with status ${res.status}`);
-        return res.json();
-      })
+    api.health.get()
       .then(data => {
         if (cancelled) return;
         setHealthInfo(data);

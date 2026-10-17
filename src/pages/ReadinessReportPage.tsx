@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
+import { ReadinessReportPayload } from '../types/index.js';
 import {
-  FileText,
   Printer,
+  Download,
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
-  Clock,
   Layers,
   Sparkles,
-  TrendingUp,
-  Award
+  TrendingUp
 } from 'lucide-react';
 
 export const ReadinessReportPage: React.FC = () => {
   const toast = useToast();
-  const [report, setReport] = useState<any | null>(null);
+  const [report, setReport] = useState<ReadinessReportPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const fetchReport = useCallback(async () => {
     try {
@@ -37,6 +37,28 @@ export const ReadinessReportPage: React.FC = () => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPdf = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const { blob, filename } = await api.readiness.downloadReportPdf();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = filename || `skillforge-readiness-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      // Revoke after the click has been processed so the download is not cancelled.
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+      toast.success('Your readiness report PDF has been downloaded.');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to download the readiness report PDF.');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   if (isLoading) {
@@ -78,14 +100,35 @@ export const ReadinessReportPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handlePrint}
-          className="btn btn-primary"
-        >
-          <Printer size={16} />
-          <span>Print / Save as PDF</span>
-        </button>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            className="btn btn-primary"
+            disabled={isDownloading}
+            aria-busy={isDownloading}
+          >
+            {isDownloading ? (
+              <span
+                className="spin"
+                aria-hidden="true"
+                style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.45)', borderTopColor: '#ffffff', borderRadius: '50%', display: 'inline-block' }}
+              />
+            ) : (
+              <Download size={16} />
+            )}
+            <span>{isDownloading ? 'Generating…' : 'Download PDF'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="btn btn-outline"
+          >
+            <Printer size={16} />
+            <span>Print</span>
+          </button>
+        </div>
       </div>
 
       {/* OFFICIAL REPORT DOCUMENT (Styled for both Screen and Print) */}
@@ -119,9 +162,9 @@ export const ReadinessReportPage: React.FC = () => {
 
           <div style={{ textAlign: 'right', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
             <div>Generated: {new Date(report.generatedAt).toLocaleDateString()}</div>
-            <div>Document Ref: SF-AI-{(report.student?.fullName || 'STD').replace(/\s+/g, '').toUpperCase()}-{new Date().getFullYear()}</div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'var(--success)', marginTop: '0.2rem', fontWeight: 600 }}>
-              <ShieldCheck size={13} /> Verified Evidence Profile
+            <div>Document Ref: SF-AI-{(report.student?.fullName || 'STD').replace(/\s+/g, '').toUpperCase()}-{new Date(report.generatedAt).getFullYear()}</div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'var(--text-muted)', marginTop: '0.2rem', fontWeight: 600 }}>
+              <ShieldCheck size={13} /> Student-Submitted Evidence Profile
             </div>
           </div>
         </div>
@@ -158,7 +201,15 @@ export const ReadinessReportPage: React.FC = () => {
             <span>Demonstrated Career Readiness: {report.readiness?.overallScore ?? 0}%</span>
           </h3>
 
-          <div className="progress-container" style={{ height: 12, marginBottom: '1rem' }}>
+          <div
+            className="progress-container"
+            role="progressbar"
+            aria-label="Demonstrated career readiness"
+            aria-valuenow={report.readiness?.overallScore ?? 0}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            style={{ height: 12, marginBottom: '1rem' }}
+          >
             <div className="progress-bar" style={{ width: `${report.readiness?.overallScore ?? 0}%` }} />
           </div>
 
@@ -172,11 +223,11 @@ export const ReadinessReportPage: React.FC = () => {
             </div>
 
             <div>
-              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>2. Verified Assessments</div>
+              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>2. Passed Assessments</div>
               <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--success)', marginTop: '0.2rem' }}>
                 {report.readiness?.breakdown?.assessmentBonus ?? 0} / 25 pts
               </div>
-              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Passed rigorous technical tests</div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Passed server-graded technical tests</div>
             </div>
 
             <div>
@@ -184,9 +235,27 @@ export const ReadinessReportPage: React.FC = () => {
               <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#38bdf8', marginTop: '0.2rem' }}>
                 {report.readiness?.breakdown?.projectEvidenceBonus ?? 0} / 25 pts
               </div>
-              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Completed projects with repo links</div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Completed projects with submitted links</div>
             </div>
           </div>
+
+          {/* Evidence provenance: distinguishes self-reported vs assessed vs project-backed */}
+          {report.evidenceBreakdown && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem' }}>
+              <span className="badge badge-pill" style={{ background: 'var(--bg-surface)', color: 'var(--text-secondary)' }}>
+                {report.evidenceBreakdown.assessed} assessed
+              </span>
+              <span className="badge badge-pill" style={{ background: 'var(--bg-surface)', color: 'var(--text-secondary)' }}>
+                {report.evidenceBreakdown.projectVerified} project-backed
+              </span>
+              <span className="badge badge-pill" style={{ background: 'var(--bg-surface)', color: 'var(--text-secondary)' }}>
+                {report.evidenceBreakdown.selfReported} self-reported
+              </span>
+              <span className="badge badge-pill" style={{ background: 'var(--bg-surface)', color: 'var(--text-secondary)' }}>
+                {report.evidenceBreakdown.unverified} unverified
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Verified Strengths vs Critical Gaps */}
@@ -228,23 +297,29 @@ export const ReadinessReportPage: React.FC = () => {
             <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
               <div>Completed Tasks: <strong>{report.roadmapProgress?.completedTasks ?? 0} of {report.roadmapProgress?.totalTasks ?? 0}</strong></div>
               <div>Roadmap Progress: <strong>{report.roadmapProgress?.progressPercentage ?? 0}%</strong></div>
-              <div>Estimated Effort Remaining: <strong>{report.gapSummary?.estimatedHours ?? 0} hours</strong></div>
+              <div>Estimated Effort to Close Skill Gaps: <strong>{report.gapSummary?.estimatedHours ?? 0} hours</strong></div>
+              {(report.roadmapProgress?.totalHours ?? 0) > 0 && (
+                <div>Roadmap Hours Logged: <strong>~{report.roadmapProgress?.completedHours ?? 0} / {report.roadmapProgress?.totalHours} hrs</strong></div>
+              )}
             </div>
           </div>
 
           <div style={{ background: 'var(--bg-surface)', padding: '1.25rem', borderRadius: 'var(--radius-md)' }}>
-            <h4 style={{ fontSize: '0.95rem', marginBottom: '0.65rem' }}>Verified Portfolio Work</h4>
+            <h4 style={{ fontSize: '0.95rem', marginBottom: '0.65rem' }}>Submitted Portfolio Evidence</h4>
             {(report.portfolioProjects?.length ?? 0) > 0 ? (
               <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>
                 {(report.portfolioProjects ?? []).map((p: any) => (
                   <div key={p.id} style={{ marginBottom: '0.4rem' }}>
-                    &check; <strong>{p.title}</strong> &bull; Status: {p.userStatus}
+                    &check; <strong>{p.title}</strong> &bull; {p.hasEvidence ? 'evidence submitted (self-reported)' : 'in progress'}
                   </div>
                 ))}
+                <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                  Links are self-reported and are not independently reviewed.
+                </div>
               </div>
             ) : (
               <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                No verified projects submitted yet.
+                No portfolio evidence submitted yet.
               </div>
             )}
           </div>

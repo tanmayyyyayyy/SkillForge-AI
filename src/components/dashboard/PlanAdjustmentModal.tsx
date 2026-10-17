@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.js';
 import { useToast } from '../../context/ToastContext.js';
 import { api } from '../../services/api.js';
-import { X, Clock, Target, Check } from 'lucide-react';
+import { X, Check } from 'lucide-react';
+import { useDialogA11y } from '../../hooks/useDialogA11y.js';
 
 interface PlanAdjustmentModalProps {
   isOpen: boolean;
@@ -21,6 +22,8 @@ export const PlanAdjustmentModal: React.FC<PlanAdjustmentModalProps> = ({
   const [weeklyHours, setWeeklyHours] = useState<number>(profile?.weeklyHours || 15);
   const [learningStyle, setLearningStyle] = useState<string>(profile?.preferredLearningStyle || 'Project-based');
   const [isSaving, setIsSaving] = useState(false);
+
+  const dialogRef = useDialogA11y<HTMLDivElement>(onClose, isOpen);
 
   if (!isOpen) return null;
 
@@ -52,6 +55,7 @@ export const PlanAdjustmentModal: React.FC<PlanAdjustmentModalProps> = ({
       aria-labelledby="modal-plan-title"
     >
       <div
+        ref={dialogRef}
         className="editorial-modal-card"
         onClick={e => e.stopPropagation()}
       >
@@ -80,10 +84,11 @@ export const PlanAdjustmentModal: React.FC<PlanAdjustmentModalProps> = ({
 
         <form onSubmit={handleSave}>
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '0.5rem' }}>
+            <label htmlFor="plan-weekly-hours" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '0.5rem' }}>
               Weekly Hours Available: <strong>{weeklyHours} hrs / week</strong>
             </label>
             <input
+              id="plan-weekly-hours"
               type="range"
               min="5"
               max="40"
@@ -104,10 +109,10 @@ export const PlanAdjustmentModal: React.FC<PlanAdjustmentModalProps> = ({
           </div>
 
           <div style={{ marginBottom: '1.75rem' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '0.5rem' }}>
+            <label id="plan-focus-label" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '0.5rem' }}>
               Preferred Learning Focus
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+            <div role="radiogroup" aria-labelledby="plan-focus-label" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
               {[
                 'Project-based',
                 'Theory & Practice',
@@ -117,6 +122,8 @@ export const PlanAdjustmentModal: React.FC<PlanAdjustmentModalProps> = ({
                 <button
                   key={style}
                   type="button"
+                  role="radio"
+                  aria-checked={learningStyle === style}
                   onClick={() => setLearningStyle(style)}
                   style={{
                     padding: '0.75rem',

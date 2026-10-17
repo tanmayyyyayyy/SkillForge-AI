@@ -20,3 +20,18 @@ export const RESUME_CONFIG = {
   /** Minimum extracted text length for the result to be considered usable. */
   minTextLength: 40
 };
+
+/**
+ * Job Description Analyzer configuration.
+ * All limits are overridable via environment variables.
+ */
+export const JD_CONFIG = {
+  /** Minimum pasted characters before a posting is considered analyzable. */
+  minChars: intFromEnv('JD_MIN_CHARS', 80),
+  /** Maximum accepted pasted job description length in characters. */
+  maxChars: intFromEnv('JD_MAX_CHARS', 20000),
+  /** Maximum number of analysis requests allowed per window, per user. */
+  rateLimitMax: intFromEnv('JD_RATE_LIMIT_MAX', 20),
+  /** Rate-limit window in milliseconds (default 10 minutes). */
+  rateLimitWindowMs: intFromEnv('JD_RATE_LIMIT_WINDOW_MS', 10 * 60 * 1000)
+};

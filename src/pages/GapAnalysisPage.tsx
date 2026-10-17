@@ -8,12 +8,9 @@ import { SkillGapAnalysisResult, PriorityBadge } from '../types/index.js';
 import {
   GitCompare,
   Filter,
-  CheckCircle2,
-  Clock,
   Layers,
   Sparkles,
   ArrowRight,
-  ShieldCheck,
   Edit3
 } from 'lucide-react';
 

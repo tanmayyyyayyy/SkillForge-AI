@@ -6,10 +6,12 @@ import {
   RoadmapTask,
   ProjectRecommendation,
   AssessmentResult,
+  AssessmentAttempt,
   LearningActivityLog,
   AiCoachMessage
 } from '../../src/types/index.js';
 import { DEFAULT_PROJECTS } from '../data/defaultProjects.js';
+import { resolveCurrentEvidence } from '../engine/assessmentEngine.js';
 
 interface DatabaseSchema {
   users: User[];
@@ -17,12 +19,28 @@ interface DatabaseSchema {
   roadmaps: Record<string, RoadmapTask[]>;
   projects: Record<string, ProjectRecommendation[]>;
   assessments: Record<string, AssessmentResult[]>;
+  assessmentAttempts: Record<string, AssessmentAttempt[]>;
   activities: Record<string, LearningActivityLog[]>;
   readinessHistory: Record<string, number[]>;
   aiMessages: Record<string, AiCoachMessage[]>;
 }
 
-const DB_FILE = path.resolve(process.cwd(), 'server/db/data.json');
+const DEFAULT_DB_FILE = path.resolve(process.cwd(), 'server/db/data.json');
+
+/**
+ * Raised when the JSON store cannot be read, parsed, or durably written.
+ *
+ * Route handlers let this propagate so a full or unwritable disk surfaces as a
+ * 5xx instead of being reported to the client as a successful mutation.
+ */
+export class StorageError extends Error {
+  public readonly detail?: unknown;
+  constructor(message: string, detail?: unknown) {
+    super(message);
+    this.name = 'StorageError';
+    this.detail = detail;
+  }
+}
 
 // Realistic Demo Seed Profile
 export const DEMO_USER_ID = 'demo_student_aarav';
@@ -226,8 +244,9 @@ export function getDemoSeedData(): DatabaseSchema {
     roadmaps: {},
     projects: { [DEMO_USER_ID]: demoProjects },
     assessments: { [DEMO_USER_ID]: [demoAssessmentResult] },
+    assessmentAttempts: {},
     activities: { [DEMO_USER_ID]: demoActivities },
-    readinessHistory: { [DEMO_USER_ID]: [36, 42, 48] },
+    readinessHistory: { [DEMO_USER_ID]: [] },
     aiMessages: {
       [DEMO_USER_ID]: [
         {
@@ -247,81 +266,189 @@ export function getDemoSeedData(): DatabaseSchema {
   };
 }
 
-class DatabaseStore {
+export class DatabaseStore {
   private data: DatabaseSchema;
+  private readonly filePath: string;
+  private readonly seedFactory: () => DatabaseSchema;
+  /** > 0 while a transaction is open; nested writes defer to one final flush. */
+  private txDepth = 0;
 
-  constructor() {
+  constructor(options: { filePath?: string; seed?: () => DatabaseSchema } = {}) {
+    this.filePath = options.filePath
+      ? path.resolve(options.filePath)
+      : process.env.SKILLFORGE_DB_FILE
+        ? path.resolve(process.env.SKILLFORGE_DB_FILE)
+        : DEFAULT_DB_FILE;
+    this.seedFactory = options.seed ?? getDemoSeedData;
     this.data = this.load();
   }
 
-  private load(): DatabaseSchema {
-    try {
-      if (fs.existsSync(DB_FILE)) {
-        const raw = fs.readFileSync(DB_FILE, 'utf-8');
-        return this.normalize(JSON.parse(raw));
-      }
-    } catch (err) {
-      console.warn('Could not read existing database file, initializing with fresh seed data.', err);
-    }
-    const seed = getDemoSeedData();
-    this.save(seed);
-    return seed;
+  /** Diagnostics only: the file this store instance reads and writes. */
+  public getStoragePath(): string {
+    return this.filePath;
   }
 
   /**
-   * Guarantees every expected collection exists with the correct container type.
-   * This prevents corrupt or legacy data files from crashing the engines at runtime.
+   * Loads persisted state, or seeds a fresh store on genuine first run. A file
+   * that exists but cannot be read or parsed is **never** silently overwritten —
+   * doing so would destroy potentially recoverable student data — so we fail fast
+   * with an actionable {@link StorageError} instead.
+   */
+  private load(): DatabaseSchema {
+    if (!fs.existsSync(this.filePath)) {
+      const seed = this.seedFactory();
+      this.save(seed);
+      return seed;
+    }
+
+    let raw: string;
+    try {
+      raw = fs.readFileSync(this.filePath, 'utf-8');
+    } catch (err) {
+      throw new StorageError(
+        `Unable to read the database file at ${this.filePath}. Refusing to reinitialize over it.`,
+        err
+      );
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      throw new StorageError(
+        `The database file at ${this.filePath} contains invalid JSON. ` +
+          'Refusing to overwrite it; restore a backup or remove the file to re-seed.',
+        err
+      );
+    }
+
+    return this.normalize(parsed);
+  }
+
+  /**
+   * Guarantees every expected collection exists with the correct container type,
+   * so corrupt or legacy files cannot crash the engines at runtime. Existing
+   * containers — including empty ones — are preserved verbatim; the demo seed is
+   * used only to fill keys that are entirely absent, never to replace real data.
    */
   private normalize(parsed: unknown): DatabaseSchema {
     const seed = getDemoSeedData();
     const source = (typeof parsed === 'object' && parsed !== null ? parsed : {}) as Partial<DatabaseSchema>;
 
-    const asArray = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+    const asArray = <T>(value: unknown, fallback: T[]): T[] =>
+      Array.isArray(value) ? (value as T[]) : fallback;
     const asRecord = <T>(value: unknown): Record<string, T> =>
       typeof value === 'object' && value !== null && !Array.isArray(value)
         ? (value as Record<string, T>)
         : {};
 
     return {
-      users: asArray<User>(source.users).length > 0 ? asArray<User>(source.users) : seed.users,
+      users: asArray<User>(source.users, seed.users),
       profiles: asRecord<StudentProfile>(source.profiles),
       roadmaps: asRecord<RoadmapTask[]>(source.roadmaps),
       projects: asRecord<ProjectRecommendation[]>(source.projects),
       assessments: asRecord<AssessmentResult[]>(source.assessments),
+      assessmentAttempts: asRecord<AssessmentAttempt[]>(source.assessmentAttempts),
       activities: asRecord<LearningActivityLog[]>(source.activities),
       readinessHistory: asRecord<number[]>(source.readinessHistory),
       aiMessages: asRecord<AiCoachMessage[]>(source.aiMessages)
     };
   }
 
+  /**
+   * Atomically persists the full dataset: writes a sibling temp file and renames
+   * it over the target, so a crash mid-write can never truncate or corrupt the
+   * existing store. Throws {@link StorageError} on any failure, so callers never
+   * report success for a write that did not reach disk.
+   */
   private save(dataToSave: DatabaseSchema = this.data): void {
+    const dir = path.dirname(this.filePath);
+    const tmp = `${this.filePath}.tmp-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
     try {
-      const dir = path.dirname(DB_FILE);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      fs.writeFileSync(DB_FILE, JSON.stringify(dataToSave, null, 2), 'utf-8');
+      fs.writeFileSync(tmp, JSON.stringify(dataToSave, null, 2), 'utf-8');
+      fs.renameSync(tmp, this.filePath);
     } catch (err) {
-      console.error('Failed to write database file:', err);
+      try {
+        if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+      } catch {
+        /* best-effort temp cleanup; preserve the original failure */
+      }
+      throw new StorageError(`Failed to persist the database to ${this.filePath}.`, err);
+    }
+  }
+
+  /**
+   * Runs several mutations as one durable unit: nothing is written until every
+   * step succeeds, and any failure (including the final flush) restores the
+   * in-memory state and rethrows — so a partial write is impossible.
+   *
+   * Only wrap synchronous work. Awaiting inside a transaction would let other
+   * requests interleave mid-unit and be discarded by this unit's rollback.
+   */
+  public transaction<T>(fn: () => T): T {
+    const backup = structuredClone(this.data);
+    this.txDepth += 1;
+
+    let result: T;
+    try {
+      result = fn();
+    } catch (err) {
+      this.txDepth -= 1;
+      this.data = backup;
+      throw err;
+    }
+    this.txDepth -= 1;
+
+    try {
+      this.save();
+    } catch (err) {
+      this.data = backup;
+      throw err;
+    }
+
+    return result;
+  }
+
+  /**
+   * Applies a single mutation and persists it. On write failure the in-memory
+   * state is reverted so memory and disk never disagree about what succeeded.
+   */
+  private commit(mutation: () => void): void {
+    if (this.txDepth > 0) {
+      mutation();
+      return;
+    }
+    const backup = structuredClone(this.data);
+    mutation();
+    try {
+      this.save();
+    } catch (err) {
+      this.data = backup;
+      throw err;
     }
   }
 
   public resetDemoData(): void {
-    const freshSeed = getDemoSeedData();
-    // Keep non-demo users if any
-    const nonDemoUsers = this.data.users.filter(u => !u.isDemo);
-    for (const u of nonDemoUsers) {
-      freshSeed.users.push(u);
-      if (this.data.profiles[u.id]) freshSeed.profiles[u.id] = this.data.profiles[u.id];
-      if (this.data.roadmaps[u.id]) freshSeed.roadmaps[u.id] = this.data.roadmaps[u.id];
-      if (this.data.projects[u.id]) freshSeed.projects[u.id] = this.data.projects[u.id];
-      if (this.data.assessments[u.id]) freshSeed.assessments[u.id] = this.data.assessments[u.id];
-      if (this.data.activities[u.id]) freshSeed.activities[u.id] = this.data.activities[u.id];
-      if (this.data.readinessHistory[u.id]) freshSeed.readinessHistory[u.id] = this.data.readinessHistory[u.id];
-      if (this.data.aiMessages[u.id]) freshSeed.aiMessages[u.id] = this.data.aiMessages[u.id];
-    }
-    this.data = freshSeed;
-    this.save();
+    this.transaction(() => {
+      const freshSeed = this.seedFactory();
+      // Preserve any real (non-demo) accounts that happen to share the store.
+      const nonDemoUsers = this.data.users.filter(u => !u.isDemo);
+      for (const u of nonDemoUsers) {
+        freshSeed.users.push(u);
+        if (this.data.profiles[u.id]) freshSeed.profiles[u.id] = this.data.profiles[u.id];
+        if (this.data.roadmaps[u.id]) freshSeed.roadmaps[u.id] = this.data.roadmaps[u.id];
+        if (this.data.projects[u.id]) freshSeed.projects[u.id] = this.data.projects[u.id];
+        if (this.data.assessments[u.id]) freshSeed.assessments[u.id] = this.data.assessments[u.id];
+        if (this.data.assessmentAttempts[u.id]) freshSeed.assessmentAttempts[u.id] = this.data.assessmentAttempts[u.id];
+        if (this.data.activities[u.id]) freshSeed.activities[u.id] = this.data.activities[u.id];
+        if (this.data.readinessHistory[u.id]) freshSeed.readinessHistory[u.id] = this.data.readinessHistory[u.id];
+        if (this.data.aiMessages[u.id]) freshSeed.aiMessages[u.id] = this.data.aiMessages[u.id];
+      }
+      this.data = freshSeed;
+    });
   }
 
   // User operations
@@ -334,8 +461,9 @@ class DatabaseStore {
   }
 
   public createUser(user: User): User {
-    this.data.users.push(user);
-    this.save();
+    this.commit(() => {
+      this.data.users.push(user);
+    });
     return user;
   }
 
@@ -345,8 +473,9 @@ class DatabaseStore {
   }
 
   public saveProfile(profile: StudentProfile): StudentProfile {
-    this.data.profiles[profile.userId] = profile;
-    this.save();
+    this.commit(() => {
+      this.data.profiles[profile.userId] = profile;
+    });
     return profile;
   }
 
@@ -357,39 +486,47 @@ class DatabaseStore {
   }
 
   public saveRoadmapTasks(userId: string, tasks: RoadmapTask[]): void {
-    this.data.roadmaps[userId] = tasks;
-    this.save();
+    this.commit(() => {
+      this.data.roadmaps[userId] = tasks;
+    });
   }
 
   public updateRoadmapTask(userId: string, taskId: string, updates: Partial<RoadmapTask>): RoadmapTask | undefined {
-    const tasks = Array.isArray(this.data.roadmaps[userId]) ? this.data.roadmaps[userId] : [];
+    const tasks = this.data.roadmaps[userId];
+    if (!Array.isArray(tasks)) return undefined;
     const index = tasks.findIndex(t => t.id === taskId);
     if (index === -1) return undefined;
 
-    tasks[index] = { ...tasks[index], ...updates };
-    this.data.roadmaps[userId] = tasks;
-    this.save();
-    return tasks[index];
+    const updated: RoadmapTask = { ...tasks[index], ...updates };
+    this.commit(() => {
+      const list = this.data.roadmaps[userId];
+      if (Array.isArray(list) && list[index]?.id === taskId) {
+        list[index] = updated;
+      }
+    });
+    return updated;
   }
 
   // Project operations
   public getProjects(userId: string): ProjectRecommendation[] {
     const projects = this.data.projects[userId];
-    if (!Array.isArray(projects)) {
-      // Initialize (or repair) with default projects for this user
+    if (Array.isArray(projects)) return projects;
+
+    // Initialize (or repair) with default projects for this user
+    this.commit(() => {
       this.data.projects[userId] = DEFAULT_PROJECTS.map(p => ({
         ...p,
         isSaved: false,
         userStatus: 'recommended'
       }));
-      this.save();
-    }
+    });
     return this.data.projects[userId];
   }
 
   public saveProjects(userId: string, projects: ProjectRecommendation[]): void {
-    this.data.projects[userId] = projects;
-    this.save();
+    this.commit(() => {
+      this.data.projects[userId] = projects;
+    });
   }
 
   public updateProject(userId: string, projectId: string, updates: Partial<ProjectRecommendation>): ProjectRecommendation | undefined {
@@ -397,30 +534,72 @@ class DatabaseStore {
     const index = list.findIndex(p => p.id === projectId);
     if (index === -1) return undefined;
 
-    list[index] = { ...list[index], ...updates };
-    this.data.projects[userId] = list;
-    this.save();
-    return list[index];
+    const updated: ProjectRecommendation = { ...list[index], ...updates };
+    this.commit(() => {
+      const current = this.data.projects[userId];
+      if (Array.isArray(current) && current[index]?.id === projectId) {
+        current[index] = updated;
+      }
+    });
+    return updated;
   }
 
   // Assessments operations
+
+  /**
+   * Returns the *current verified evidence* per skill (one result per skill id):
+   * the highest-scoring pass, or the most recent attempt when a skill was never
+   * passed. This is what the readiness engine and reports consume, so repeated
+   * attempts never double-count and a lower retake never downgrades evidence.
+   */
   public getAssessments(userId: string): AssessmentResult[] {
+    return resolveCurrentEvidence(this.getAssessmentHistory(userId));
+  }
+
+  /** Full, append-only attempt/result history for a user (newest last). */
+  public getAssessmentHistory(userId: string): AssessmentResult[] {
     const results = this.data.assessments[userId];
     return Array.isArray(results) ? results : [];
   }
 
+  /**
+   * Appends a graded result to history. History is append-only so retakes never
+   * overwrite earlier graded attempts.
+   */
   public saveAssessmentResult(result: AssessmentResult): void {
-    if (!Array.isArray(this.data.assessments[result.userId])) {
-      this.data.assessments[result.userId] = [];
-    }
-    // Replace if already assessed, else append
-    const existingIndex = this.data.assessments[result.userId].findIndex(a => a.skillId === result.skillId);
-    if (existingIndex !== -1) {
-      this.data.assessments[result.userId][existingIndex] = result;
-    } else {
+    this.commit(() => {
+      if (!Array.isArray(this.data.assessments[result.userId])) {
+        this.data.assessments[result.userId] = [];
+      }
       this.data.assessments[result.userId].push(result);
-    }
-    this.save();
+    });
+  }
+
+  // Assessment attempt operations (lifecycle: in_progress -> graded)
+
+  public getAssessmentAttempts(userId: string): AssessmentAttempt[] {
+    const attempts = this.data.assessmentAttempts[userId];
+    return Array.isArray(attempts) ? attempts : [];
+  }
+
+  public getAssessmentAttempt(userId: string, attemptId: string): AssessmentAttempt | undefined {
+    return this.getAssessmentAttempts(userId).find(a => a.id === attemptId);
+  }
+
+  /** Upserts an attempt by id (used to create, then transition, an attempt). */
+  public saveAssessmentAttempt(attempt: AssessmentAttempt): void {
+    this.commit(() => {
+      if (!Array.isArray(this.data.assessmentAttempts[attempt.userId])) {
+        this.data.assessmentAttempts[attempt.userId] = [];
+      }
+      const list = this.data.assessmentAttempts[attempt.userId];
+      const index = list.findIndex(a => a.id === attempt.id);
+      if (index !== -1) {
+        list[index] = attempt;
+      } else {
+        list.push(attempt);
+      }
+    });
   }
 
   // Activities operations
@@ -430,30 +609,34 @@ class DatabaseStore {
   }
 
   public logActivity(activity: LearningActivityLog): void {
-    if (!Array.isArray(this.data.activities[activity.userId])) {
-      this.data.activities[activity.userId] = [];
-    }
-    this.data.activities[activity.userId].unshift(activity); // Newest first
-    this.save();
+    this.commit(() => {
+      if (!Array.isArray(this.data.activities[activity.userId])) {
+        this.data.activities[activity.userId] = [];
+      }
+      this.data.activities[activity.userId].unshift(activity); // Newest first
+    });
   }
 
   // Readiness history
   public getReadinessHistory(userId: string): number[] {
     const history = this.data.readinessHistory[userId];
-    return Array.isArray(history) ? history : [0];
+    return Array.isArray(history) ? history : [];
   }
 
   public recordReadinessScore(userId: string, score: number): void {
-    if (!Array.isArray(this.data.readinessHistory[userId])) {
-      this.data.readinessHistory[userId] = [];
-    }
-    const history = this.data.readinessHistory[userId];
-    if (history.length === 0 || history[history.length - 1] !== score) {
-      history.push(score);
+    const history = Array.isArray(this.data.readinessHistory[userId]) ? this.data.readinessHistory[userId] : [];
+    // No-op when the observed score is unchanged (dedupe consecutive duplicates).
+    if (history.length > 0 && history[history.length - 1] === score) return;
+
+    this.commit(() => {
+      if (!Array.isArray(this.data.readinessHistory[userId])) {
+        this.data.readinessHistory[userId] = [];
+      }
+      const list = this.data.readinessHistory[userId];
+      list.push(score);
       // Keep last 10 points
-      if (history.length > 10) history.shift();
-      this.save();
-    }
+      if (list.length > 10) list.shift();
+    });
   }
 
   // AI chat messages
@@ -463,11 +646,12 @@ class DatabaseStore {
   }
 
   public addAiMessage(userId: string, message: AiCoachMessage): void {
-    if (!Array.isArray(this.data.aiMessages[userId])) {
-      this.data.aiMessages[userId] = [];
-    }
-    this.data.aiMessages[userId].push(message);
-    this.save();
+    this.commit(() => {
+      if (!Array.isArray(this.data.aiMessages[userId])) {
+        this.data.aiMessages[userId] = [];
+      }
+      this.data.aiMessages[userId].push(message);
+    });
   }
 }
 

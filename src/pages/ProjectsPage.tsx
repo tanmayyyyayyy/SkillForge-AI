@@ -9,11 +9,7 @@ import {
   Circle,
   ExternalLink,
   ShieldCheck,
-  Sparkles,
-  UploadCloud,
-  Clock,
-  Layers,
-  ChevronRight
+  UploadCloud
 } from 'lucide-react';
 
 export const ProjectsPage: React.FC = () => {
@@ -105,14 +101,14 @@ export const ProjectsPage: React.FC = () => {
             Role-Tailored Project Portfolio
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.4rem', lineHeight: 1.5 }}>
-            Employers hire for practical evidence. Complete these milestone projects to prove your capability and earn verified project badges.
+            Build practical evidence. Complete every milestone in these projects and submit your repository / demo links to earn practical project credit.
           </p>
         </div>
 
         <div className="card" style={{ padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(45, 106, 79, 0.1)', borderColor: 'rgba(45, 106, 79, 0.3)' }}>
           <ShieldCheck size={18} color="var(--success)" />
           <span style={{ fontSize: '0.84rem', color: 'var(--success)' }}>
-            Verified evidence provides <strong>+25% Readiness Score</strong>
+            Completed projects with evidence contribute up to <strong>+25% Readiness Score</strong>
           </span>
         </div>
       </div>
@@ -152,7 +148,7 @@ export const ProjectsPage: React.FC = () => {
                     </span>
                     {isCompleted ? (
                       <span className="badge badge-mastered">
-                        <CheckCircle2 size={13} /> Verified Project
+                        <CheckCircle2 size={13} /> Project Completed
                       </span>
                     ) : (
                       <span className="badge badge-pill" style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)' }}>
@@ -299,7 +295,7 @@ export const ProjectsPage: React.FC = () => {
                 <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 'var(--radius-md)', padding: '0.85rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--success)', fontWeight: 600, fontSize: '0.85rem' }}>
-                      <ShieldCheck size={16} /> Evidence Verified
+                      <ShieldCheck size={16} /> Evidence Submitted
                     </div>
                     {proj.submittedEvidence.repoUrl && (
                       <a href={proj.submittedEvidence.repoUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.82rem' }}>
@@ -315,7 +311,7 @@ export const ProjectsPage: React.FC = () => {
                     )}
                   </div>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Verified on {new Date(proj.submittedEvidence.submittedAt).toLocaleDateString()}
+                    Self-reported &bull; submitted {new Date(proj.submittedEvidence.submittedAt).toLocaleDateString()}
                   </span>
                 </div>
               )}
@@ -338,7 +334,8 @@ export const ProjectsPage: React.FC = () => {
               Submit Project Evidence: {evidenceProject.title}
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: '1.25rem' }}>
-              Submitting verified repository or live demo links certifies your practical competence and upgrades your skills in your career readiness score.
+              Links are saved as self-reported project evidence. Submitting a link does not verify your skills on its own —
+              complete every milestone to earn practical project credit toward your readiness score.
             </p>
 
             <form onSubmit={handleSubmitEvidence}>
@@ -383,7 +380,7 @@ export const ProjectsPage: React.FC = () => {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                  {isSubmitting ? 'Verifying...' : 'Submit & Certify Skills'}
+                  {isSubmitting ? 'Saving...' : 'Submit Evidence'}
                 </button>
               </div>
             </form>

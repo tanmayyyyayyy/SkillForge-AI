@@ -110,6 +110,7 @@ export const Navbar: React.FC = () => {
               }}
               className="btn btn-ghost btn-sm"
               title="Sign Out"
+              aria-label="Sign Out"
             >
               <LogOut size={16} />
             </button>

@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: skillforge-ai
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_ORIGIN
+        value: ""
+      # OPTIONAL: Set GEMINI_API_KEY in the Render dashboard to enable live Gemini AI.
+      # If omitted, SkillForge AI automatically uses the offline Deterministic Advisory Engine.
+      # - key: GEMINI_API_KEY
+      #   sync: false
+      # OPTIONAL: Persistent Disk support (requires Render Starter plan or higher).
+      # On Render Free tier, filesystem is ephemeral and resets on sleep/restart.
+      # - key: SKILLFORGE_DB_FILE
+      #   value: /var/data/skillforge/data.json
+    # disk:
+    #   name: skillforge-data
+    #   mountPath: /var/data/skillforge
+    #   sizeGB: 1

@@ -4,8 +4,16 @@ import { db, DEMO_USER_ID } from '../db/store.js';
 
 const DEFAULT_JWT_SECRET = 'skillforge-dev-secret-key-saarthix-mvp-2026';
 
+let warnedDevSecret = false;
+
 // Read lazily so environment variables loaded after module import (or per-test) are respected.
 function getJwtSecret(): string {
+  if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET === DEFAULT_JWT_SECRET)) {
+    if (!warnedDevSecret) {
+      console.warn('⚠️  [SECURITY WARNING] Insecure development JWT secret in use in production mode. Set JWT_SECRET environment variable.');
+      warnedDevSecret = true;
+    }
+  }
   return process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
 }
 

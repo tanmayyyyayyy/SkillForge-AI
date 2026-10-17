@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
-import { SkillAssessment } from '../types/index.js';
+import { SkillAssessment, AssessmentAttemptSummary } from '../types/index.js';
 import {
   Award,
   CheckCircle2,
@@ -11,7 +11,7 @@ import {
   ArrowRight,
   ShieldCheck,
   RotateCcw,
-  Sparkles
+  History
 } from 'lucide-react';
 
 export const AssessmentsPage: React.FC = () => {
@@ -21,6 +21,8 @@ export const AssessmentsPage: React.FC = () => {
 
   // Active Quiz State
   const [activeQuiz, setActiveQuiz] = useState<SkillAssessment | null>(null);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [previousAttempts, setPreviousAttempts] = useState<AssessmentAttemptSummary[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [quizResult, setQuizResult] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,8 +46,14 @@ export const AssessmentsPage: React.FC = () => {
   const handleStartQuiz = async (skillId: string) => {
     try {
       setIsLoading(true);
-      const res = await api.assessments.getQuestions(skillId);
-      setActiveQuiz(res.assessment);
+      // Open a tracked attempt and load the question sheet in parallel.
+      const [sheet, started] = await Promise.all([
+        api.assessments.getQuestions(skillId),
+        api.assessments.startAttempt(skillId)
+      ]);
+      setActiveQuiz(sheet.assessment);
+      setPreviousAttempts(sheet.attempts ?? []);
+      setAttemptId(started.attempt.id);
       setSelectedAnswers({});
       setQuizResult(null);
     } catch (err: any) {
@@ -61,7 +69,7 @@ export const AssessmentsPage: React.FC = () => {
   };
 
   const handleSubmitQuiz = async () => {
-    if (!activeQuiz) return;
+    if (!activeQuiz || !attemptId) return;
     const answeredCount = Object.keys(selectedAnswers).length;
     if (answeredCount < (activeQuiz.questions?.length ?? 0)) {
       toast.info(`Please answer all ${activeQuiz.questions?.length ?? 0} questions before submitting.`);
@@ -70,7 +78,7 @@ export const AssessmentsPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const res = await api.assessments.submit(activeQuiz.skillId, selectedAnswers);
+      const res = await api.assessments.submitAttempt(attemptId, selectedAnswers);
       setQuizResult(res);
       toast.success(res.message);
       fetchAssessments();
@@ -101,14 +109,15 @@ export const AssessmentsPage: React.FC = () => {
             Skill verification assessments
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', marginTop: '0.3rem' }}>
-            Prove practical mastery through server-graded technical questions. Passing scores (&ge; 75%) officially certify your capability.
+            Server-graded multiple-choice checks of conceptual knowledge. Passing (≥ the assessment threshold) marks the skill
+            as assessed knowledge — it confirms understanding, not hands-on project experience.
           </p>
         </div>
 
         <div className="card" style={{ padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(211, 138, 25, 0.1)', borderColor: 'rgba(211, 138, 25, 0.25)' }}>
           <ShieldCheck size={18} color="var(--color-accent)" />
           <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)' }}>
-            Verified assessments contribute up to <strong style={{ color: 'var(--color-accent)' }}>+25% to Readiness Score</strong>
+            Passing assessments contribute up to <strong style={{ color: 'var(--color-accent)' }}>+25% to Readiness Score</strong>
           </span>
         </div>
       </div>
@@ -125,13 +134,14 @@ export const AssessmentsPage: React.FC = () => {
               </div>
               <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                 Passing threshold: {activeQuiz.passingScorePercentage}% &bull; {activeQuiz.questions?.length ?? 0} questions
+                {activeQuiz.estimatedMinutes ? <> &bull; ~{activeQuiz.estimatedMinutes} min</> : null}
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button
                 type="button"
-                onClick={() => { setActiveQuiz(null); setQuizResult(null); }}
+                onClick={() => { setActiveQuiz(null); setQuizResult(null); setAttemptId(null); setPreviousAttempts([]); }}
                 className="btn btn-secondary btn-sm"
               >
                 Back to Assessments
@@ -164,10 +174,15 @@ export const AssessmentsPage: React.FC = () => {
                 )}
                 <div>
                   <div style={{ fontSize: '1.15rem', fontWeight: 700, color: quizResult.result?.passed ? 'var(--success)' : 'var(--danger)' }}>
-                    {quizResult.result?.passed ? 'Assessment Passed! Skill Verified' : 'Assessment Completed (Needs Review)'}
+                    {quizResult.result?.passed ? 'Assessment Passed — Knowledge Verified' : 'Assessment Completed (Below Threshold)'}
                   </div>
                   <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>
                     Score: <strong>{quizResult.result?.scorePercentage}%</strong> ({quizResult.result?.correctAnswersCount}/{quizResult.result?.totalQuestions} questions correct)
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    {quizResult.result?.passed
+                      ? 'This verifies assessed knowledge of this topic via multiple-choice questions. It does not by itself prove practical, project-level proficiency.'
+                      : 'No skill evidence was recorded. Review the explanations and retake to verify this skill.'}
                   </div>
                 </div>
               </div>
@@ -180,6 +195,30 @@ export const AssessmentsPage: React.FC = () => {
                 <RotateCcw size={14} />
                 <span>Retake Assessment</span>
               </button>
+            </div>
+          )}
+
+          {/* Prior attempts for this skill (real records only) */}
+          {previousAttempts.length > 0 && (
+            <div style={{ marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                <History size={14} />
+                <span>Previous attempts ({previousAttempts.length})</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {previousAttempts.map(a => (
+                  <span
+                    key={a.id}
+                    className="badge badge-pill"
+                    style={{
+                      background: a.passed ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-surface)',
+                      color: a.passed ? 'var(--success)' : 'var(--text-secondary)'
+                    }}
+                  >
+                    {a.status === 'graded' ? `${a.scorePercentage}%` : 'In progress'} &bull; {new Date(a.startedAt).toLocaleDateString()}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 
@@ -315,7 +354,7 @@ export const AssessmentsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSubmitQuiz}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !attemptId}
                 className="btn btn-primary btn-lg"
               >
                 <span>{isSubmitting ? 'Evaluating Answers...' : 'Submit Assessment for Grading'}</span>
@@ -357,7 +396,7 @@ export const AssessmentsPage: React.FC = () => {
                     </span>
                   ) : item.lastScorePercentage !== null ? (
                     <span className="badge badge-high">
-                      Score: {item.lastScorePercentage}%
+                      Last: {item.lastScorePercentage}%
                     </span>
                   ) : (
                     <span className="badge badge-pill" style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)' }}>
@@ -367,13 +406,16 @@ export const AssessmentsPage: React.FC = () => {
                 </div>
 
                 <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                  Category: {item.category} &bull; {item.questionsCount} Questions &bull; Difficulty: {item.difficulty}
+                  Category: {item.category} &bull; {item.questionsCount} Questions
+                  {item.estimatedMinutes ? <> &bull; ~{item.estimatedMinutes} min</> : null}
+                  &bull; Difficulty: {item.difficulty}
+                  {item.attemptCount > 0 ? <> &bull; {item.attemptCount} attempt{item.attemptCount > 1 ? 's' : ''}</> : null}
                 </div>
 
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
                   {item.passed
-                    ? `You successfully scored ${item.lastScorePercentage}% on this assessment, granting verified skill evidence.`
-                    : 'Server-graded conceptual and architecture questions to verify production competence.'}
+                    ? `You verified this skill with a best score of ${item.bestScorePercentage}% on the multiple-choice assessment.`
+                    : 'A server-graded multiple-choice check of conceptual knowledge for this skill.'}
                 </p>
               </div>
 

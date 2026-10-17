@@ -35,33 +35,39 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    const newUser = db.createUser({
-      id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      passwordHash,
-      createdAt: new Date().toISOString(),
-      isDemo: false
-    });
+    // Create the account and its initial profile as one atomic unit, so a
+    // storage failure cannot leave a user without a profile.
+    const { newUser, initialProfile } = db.transaction(() => {
+      const createdUser = db.createUser({
+        id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        passwordHash,
+        createdAt: new Date().toISOString(),
+        isDemo: false
+      });
 
-    // Create empty initial student profile template
-    const initialProfile: StudentProfile = {
-      userId: newUser.id,
-      fullName: newUser.name,
-      educationLevel: 'Undergraduate',
-      degree: 'Computer Science',
-      graduationYear: new Date().getFullYear() + 2,
-      experienceLevel: 'Beginner',
-      weeklyHours: 10,
-      preferredLearningStyle: 'Project-based',
-      targetCompanies: [],
-      targetRole: 'sde',
-      currentSkills: [],
-      existingProjects: [],
-      interests: [],
-      updatedAt: new Date().toISOString()
-    };
-    db.saveProfile(initialProfile);
+      // Create empty initial student profile template
+      const profile: StudentProfile = {
+        userId: createdUser.id,
+        fullName: createdUser.name,
+        educationLevel: 'Undergraduate',
+        degree: 'Computer Science',
+        graduationYear: new Date().getFullYear() + 2,
+        experienceLevel: 'Beginner',
+        weeklyHours: 10,
+        preferredLearningStyle: 'Project-based',
+        targetCompanies: [],
+        targetRole: 'sde',
+        currentSkills: [],
+        existingProjects: [],
+        interests: [],
+        updatedAt: new Date().toISOString()
+      };
+      db.saveProfile(profile);
+
+      return { newUser: createdUser, initialProfile: profile };
+    });
 
     const token = signToken(newUser.id, false);
 
@@ -154,6 +160,7 @@ authRouter.post('/demo/reset', (_req: Request, res: Response): void => {
     db.resetDemoData();
     res.json({ message: 'Demo data successfully reset to clean evaluation baseline.' });
   } catch (err) {
+    console.error('Demo data reset error:', err);
     res.status(500).json({ error: 'Failed to reset demo data.' });
   }
 });

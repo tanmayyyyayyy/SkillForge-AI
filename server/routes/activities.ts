@@ -10,6 +10,7 @@ activitiesRouter.get('/', authMiddleware, (req: AuthenticatedRequest, res: Respo
     const activities = db.getActivities(req.userId!);
     res.json({ activities });
   } catch (err) {
+    console.error('Failed to load activities:', err);
     res.status(500).json({ error: 'Failed to retrieve activities.' });
   }
 });

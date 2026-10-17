@@ -45,7 +45,6 @@ aiCoachRouter.post('/chat', authMiddleware, async (req: AuthenticatedRequest, re
       timestamp: new Date().toISOString(),
       engineUsed: process.env.GEMINI_API_KEY ? 'Gemini Pro (Live API)' : 'Deterministic Advisory Engine'
     };
-    db.addAiMessage(req.userId!, userMessage);
 
     const userPromptLower = prompt.toLowerCase();
     let replyContent = '';
@@ -236,7 +235,13 @@ Feel free to ask me any of the following to accelerate your progress:
       engineUsed,
       suggestedActions
     };
-    db.addAiMessage(req.userId!, assistantMessage);
+
+    // Persist the user turn and the reply together so the transcript never ends
+    // up with one message missing when storage fails mid-write.
+    db.transaction(() => {
+      db.addAiMessage(req.userId!, userMessage);
+      db.addAiMessage(req.userId!, assistantMessage);
+    });
 
     res.json({
       message: assistantMessage,

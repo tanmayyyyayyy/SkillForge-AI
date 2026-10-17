@@ -65,21 +65,28 @@ profileRouter.put('/', authMiddleware, (req: AuthenticatedRequest, res: Response
       return;
     }
 
-    const savedProfile = db.saveProfile(validation.sanitized);
+    // Persist the profile, regenerated roadmap, and readiness observation as a
+    // single atomic unit so a mid-way storage failure cannot leave the profile
+    // saved but the dependent assets stale.
+    const { savedProfile, readiness } = db.transaction(() => {
+      const profile = db.saveProfile(validation.sanitized);
 
-    // Recalculate dependent intelligence assets (gaps, roadmap, readiness)
-    const role = CAREER_ROLES.find(r => r.id === savedProfile.targetRole) || CAREER_ROLES[0];
-    const gaps = calculateSkillGaps(savedProfile, role);
-    const existingTasks = db.getRoadmapTasks(req.userId!);
-    const updatedRoadmap = generateRoadmap(savedProfile, role, gaps, existingTasks);
-    db.saveRoadmapTasks(req.userId!, updatedRoadmap.stages.flatMap(s => s.tasks));
+      // Recalculate dependent intelligence assets (gaps, roadmap, readiness)
+      const role = CAREER_ROLES.find(r => r.id === profile.targetRole) || CAREER_ROLES[0];
+      const gaps = calculateSkillGaps(profile, role);
+      const existingTasks = db.getRoadmapTasks(req.userId!);
+      const updatedRoadmap = generateRoadmap(profile, role, gaps, existingTasks);
+      db.saveRoadmapTasks(req.userId!, updatedRoadmap.stages.flatMap(s => s.tasks));
 
-    const assessments = db.getAssessments(req.userId!);
-    const projects = db.getProjects(req.userId!);
-    const history = db.getReadinessHistory(req.userId!);
-    const previousScore = history.length > 0 ? history[history.length - 1] : 0;
-    const readiness = calculateCareerReadiness(savedProfile, role, assessments, projects, previousScore);
-    db.recordReadinessScore(req.userId!, readiness.overallScore);
+      const assessments = db.getAssessments(req.userId!);
+      const projects = db.getProjects(req.userId!);
+      const history = db.getReadinessHistory(req.userId!);
+      const previousScore = history.length > 0 ? history[history.length - 1] : 0;
+      const snapshot = calculateCareerReadiness(profile, role, assessments, projects, previousScore);
+      db.recordReadinessScore(req.userId!, snapshot.overallScore);
+
+      return { savedProfile: profile, readiness: snapshot };
+    });
 
     res.json({
       profile: savedProfile,
@@ -156,21 +163,31 @@ profileRouter.patch('/skills', authMiddleware, (req: AuthenticatedRequest, res: 
       });
     }
 
-    profile.currentSkills = skills;
-    profile.updatedAt = new Date().toISOString();
-    db.saveProfile(profile);
+    // Work on a copy so a failed transaction rolls back to the pristine profile
+    // rather than an object already mutated in place.
+    const nextProfile: StudentProfile = {
+      ...profile,
+      currentSkills: skills,
+      updatedAt: new Date().toISOString()
+    };
 
-    // Recalculate dependent readiness
-    const role = CAREER_ROLES.find(r => r.id === profile.targetRole) || CAREER_ROLES[0];
-    const assessments = db.getAssessments(req.userId!);
-    const projects = db.getProjects(req.userId!);
-    const history = db.getReadinessHistory(req.userId!);
-    const previousScore = history.length > 0 ? history[history.length - 1] : 0;
-    const readiness = calculateCareerReadiness(profile, role, assessments, projects, previousScore);
-    db.recordReadinessScore(req.userId!, readiness.overallScore);
+    // Persist the skill update and its readiness observation atomically.
+    const readiness = db.transaction(() => {
+      db.saveProfile(nextProfile);
+
+      // Recalculate dependent readiness
+      const role = CAREER_ROLES.find(r => r.id === nextProfile.targetRole) || CAREER_ROLES[0];
+      const assessments = db.getAssessments(req.userId!);
+      const projects = db.getProjects(req.userId!);
+      const history = db.getReadinessHistory(req.userId!);
+      const previousScore = history.length > 0 ? history[history.length - 1] : 0;
+      const snapshot = calculateCareerReadiness(nextProfile, role, assessments, projects, previousScore);
+      db.recordReadinessScore(req.userId!, snapshot.overallScore);
+      return snapshot;
+    });
 
     res.json({
-      profile,
+      profile: nextProfile,
       readiness: readiness.overallScore,
       message: 'Skill updated successfully.'
     });

@@ -23,7 +23,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   roleTitle,
   educationInfo
 }) => {
-  const { user, profile, logout } = useAuth();
+  const { profile, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);

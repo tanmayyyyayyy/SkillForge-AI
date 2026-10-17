@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 import { useToast } from '../context/ToastContext.js';
-import { Layers, Sparkles, LogIn, UserPlus, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Layers, Sparkles, LogIn, UserPlus, ShieldCheck } from 'lucide-react';
 
 export const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -179,6 +179,7 @@ export const AuthPage: React.FC = () => {
         {/* Error Alert */}
         {errorMessage && (
           <div
+            role="alert"
             style={{
               padding: '0.75rem 1rem',
               background: 'var(--danger-subtle)',

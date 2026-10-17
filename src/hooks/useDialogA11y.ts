@@ -17,7 +17,10 @@ const FOCUSABLE_SELECTOR =
 export function useDialogA11y<T extends HTMLElement = HTMLDivElement>(onClose: () => void, enabled = true) {
   const ref = useRef<T>(null);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!enabled) return;

@@ -6,13 +6,7 @@ import { AiCoachMessage } from '../types/index.js';
 import {
   Bot,
   Send,
-  Sparkles,
-  HelpCircle,
-  Clock,
-  Briefcase,
-  Layers,
-  ShieldCheck,
-  CheckCircle2
+  Sparkles
 } from 'lucide-react';
 
 export const AiCoachPage: React.FC = () => {

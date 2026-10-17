@@ -4,7 +4,7 @@
       "id": "demo_student_aarav",
       "email": "demo.evaluator@skillforge.ai",
       "name": "Aarav Sharma",
-      "createdAt": "2026-10-16T15:18:32.793Z",
+      "createdAt": "2026-10-16T17:47:36.531Z",
       "isDemo": true
     }
   ],
@@ -45,8 +45,10 @@
           "category": "Programming Languages",
           "proficiency": 3,
           "status": "assessed",
-          "lastAssessedAt": "2026-10-14T15:18:32.793Z",
-          "assessmentScore": 85
+          "lastAssessedAt": "2026-10-16T18:23:03.257Z",
+          "assessmentScore": 100,
+          "source": "assessment",
+          "updatedAt": "2026-10-16T18:23:03.257Z"
         },
         {
           "skillId": "sql",
@@ -131,7 +133,7 @@
           ],
           "projectStatus": "completed",
           "completed": true,
-          "completedAt": "2026-10-09T15:18:32.793Z"
+          "completedAt": "2026-10-09T17:47:36.531Z"
         }
       ],
       "experience": [
@@ -154,10 +156,462 @@
         "Distributed Computing",
         "FinTech Analytics"
       ],
-      "updatedAt": "2026-10-16T15:18:32.793Z"
+      "updatedAt": "2026-10-16T17:47:36.531Z"
     }
   },
-  "roadmaps": {},
+  "roadmaps": {
+    "demo_student_aarav": [
+      {
+        "id": "task_python_1",
+        "userId": "demo_student_aarav",
+        "skillId": "python",
+        "skillName": "Python Programming",
+        "category": "Programming Languages",
+        "stageNumber": 1,
+        "stageName": "Mathematical & Programming Foundations",
+        "whyItMatters": "Essential for AI/ML Engineer: Proficient with list comprehensions, generators, and decorators",
+        "currentProficiency": 3,
+        "targetProficiency": 4,
+        "priority": "High",
+        "priorityScore": 51,
+        "estimatedHours": 10,
+        "prerequisites": [],
+        "learningResources": [
+          {
+            "title": "Official Python Documentation & Tutorial",
+            "type": "doc",
+            "url": "https://docs.python.org/3/tutorial/",
+            "free": true
+          },
+          {
+            "title": "Fluent Python (Core concepts)",
+            "type": "tutorial",
+            "url": "https://realpython.com/",
+            "free": true
+          }
+        ],
+        "practiceActivity": "Solve 25 algorithmic problems and write modular data processing scripts with unit tests.",
+        "projectApplication": "Write a high-performance CLI tool for dataset parsing with multithreading.",
+        "completionCriteria": [
+          "Proficient with list comprehensions, generators, and decorators",
+          "Object-oriented design and modular packaging",
+          "Async programming and memory profiling"
+        ],
+        "status": "not_started",
+        "completionPercentage": 0,
+        "userNotes": ""
+      },
+      {
+        "id": "task_data_manipulation_1",
+        "userId": "demo_student_aarav",
+        "skillId": "data_manipulation",
+        "skillName": "Data Wrangling (NumPy & Pandas)",
+        "category": "Data Engineering",
+        "stageNumber": 1,
+        "stageName": "Mathematical & Programming Foundations",
+        "whyItMatters": "Essential for AI/ML Engineer: Vectorized operations and multidimensional broadcasting in NumPy",
+        "currentProficiency": 3,
+        "targetProficiency": 4,
+        "priority": "Medium",
+        "priorityScore": 49,
+        "estimatedHours": 8,
+        "prerequisites": [
+          "python"
+        ],
+        "learningResources": [
+          {
+            "title": "Pandas User Guide & Cookbook",
+            "type": "doc",
+            "url": "https://pandas.pydata.org/docs/user_guide/",
+            "free": true
+          },
+          {
+            "title": "NumPy Quickstart Guide",
+            "type": "doc",
+            "url": "https://numpy.org/doc/stable/user/quickstart.html",
+            "free": true
+          }
+        ],
+        "practiceActivity": "Clean a messy 100k-row e-commerce dataset, impute values, and compute cohort retention.",
+        "projectApplication": "Create an automated exploratory data analysis (EDA) pipeline generating summary reports.",
+        "completionCriteria": [
+          "Vectorized operations and multidimensional broadcasting in NumPy",
+          "Data cleaning, group-by aggregations, and pivot tables in Pandas",
+          "Handling missing values, outliers, and time-series indexing"
+        ],
+        "status": "not_started",
+        "completionPercentage": 0,
+        "userNotes": ""
+      },
+      {
+        "id": "task_math_stats_1",
+        "userId": "demo_student_aarav",
+        "skillId": "math_stats",
+        "skillName": "Linear Algebra & Statistics",
+        "category": "Mathematics",
+        "stageNumber": 1,
+        "stageName": "Mathematical & Programming Foundations",
+        "whyItMatters": "Essential for AI/ML Engineer: Matrix operations, eigenvalues, and SVD",
+        "currentProficiency": 2,
+        "targetProficiency": 3,
+        "priority": "Medium",
+        "priorityScore": 47,
+        "estimatedHours": 12,
+        "prerequisites": [],
+        "learningResources": [
+          {
+            "title": "3Blue1Brown Essence of Linear Algebra",
+            "type": "tutorial",
+            "url": "https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab",
+            "free": true
+          },
+          {
+            "title": "Khan Academy Statistics & Probability",
+            "type": "course",
+            "url": "https://www.khanacademy.org/math/statistics-probability",
+            "free": true
+          }
+        ],
+        "practiceActivity": "Implement matrix multiplication and gradient descent from scratch in pure Python.",
+        "projectApplication": "Build a statistical hypothesis testing engine for A/B experiment evaluation.",
+        "completionCriteria": [
+          "Matrix operations, eigenvalues, and SVD",
+          "Probability distributions and Bayes theorem",
+          "Hypothesis testing, p-values, and confidence intervals"
+        ],
+        "status": "not_started",
+        "completionPercentage": 0,
+        "userNotes": ""
+      },
+      {
+        "id": "task_scikit_learn_2",
+        "userId": "demo_student_aarav",
+        "skillId": "scikit_learn",
+        "skillName": "Classical ML (Scikit-Learn)",
+        "category": "Machine Learning",
+        "stageNumber": 2,
+        "stageName": "Classical Machine Learning",
+        "whyItMatters": "Essential for AI/ML Engineer: Classification, regression, and clustering algorithms",
+        "currentProficiency": 2,
+        "targetProficiency": 4,
+        "priority": "High",
+        "priorityScore": 62,
+        "estimatedHours": 23,
+        "prerequisites": [
+          "python",
+          "data_manipulation",
+          "math_stats"
+        ],
+        "learningResources": [
+          {
+            "title": "Scikit-Learn User Guide",
+            "type": "doc",
+            "url": "https://scikit-learn.org/stable/user_guide.html",
+            "free": true
+          },
+          {
+            "title": "Hands-On Machine Learning (Scikit-Learn & PyTorch)",
+            "type": "course",
+            "url": "https://github.com/ageron/handson-ml3",
+            "free": true
+          }
+        ],
+        "practiceActivity": "Train and compare 5 classification models on Kaggle datasets with feature importance analysis.",
+        "projectApplication": "Build a customer churn prediction engine with probability calibration and explanation.",
+        "completionCriteria": [
+          "Classification, regression, and clustering algorithms",
+          "Cross-validation, hyperparameter tuning (Grid/Random Search)",
+          "Evaluation metrics (ROC-AUC, Precision/Recall, F1-Score, Confusion Matrix)"
+        ],
+        "status": "not_started",
+        "completionPercentage": 0,
+        "userNotes": ""
+      },
+      {
+        "id": "task_sql_2",
+        "userId": "demo_student_aarav",
+        "skillId": "sql",
+        "skillName": "SQL & Relational Databases",
+        "category": "Data Management",
+        "stageNumber": 2,
+        "stageName": "Classical Machine Learning",
+        "whyItMatters": "Essential for AI/ML Engineer: Complex joins, window functions, and CTEs",
+        "currentProficiency": 2,
+        "targetProficiency": 3,
+        "priority": "Medium",
+        "priorityScore": 45,
+        "estimatedHours": 8,
+        "prerequisites": [],
+        "learningResources": [
+          {
+            "title": "PostgreSQL Tutorial & Reference",
+            "type": "doc",
+            "url": "https://www.postgresqltutorial.com/",
+            "free": true
+          },
+          {
+            "title": "Mode Analytics SQL Tutorial",
+            "type": "tutorial",
+            "url": "https://mode.com/sql-tutorial/",
+            "free": true
+          }
+        ],
+        "practiceActivity": "Write analytical SQL queries with window functions (RANK, ROW_NUMBER, LAG) on sample schemas.",
+        "projectApplication": "Design a feature store schema to query customer behavior metrics for ML inference.",
+        "completionCriteria": [
+          "Complex joins, window functions, and CTEs",
+          "Query optimization and indexing strategies",
+          "Data aggregation for business intelligence queries"
+        ],
+        "status": "not_started",
+        "completionPercentage": 0,
+        "userNotes": ""
+      },
+      {
+        "id": "task_pytorch_3",
+        "userId": "demo_student_aarav",
+        "skillId": "pytorch",
+        "skillName": "Deep Learning with PyTorch",
+        "category": "Deep Learning",
+        "stageNumber": 3,
+        "stageName": "Deep Learning & Neural Networks",
+        "whyItMatters": "Essential for AI/ML Engineer: Tensors, autograd, computational graphs, and GPU acceleration",
+        "currentProficiency": 1,
+        "targetProficiency": 4,
+        "priority": "Critical",
+        "priorityScore": 75,
+        "estimatedHours": 38,
+        "prerequisites": [
+          "python",
+          "math_stats",
+          "scikit_learn"
+        ],
+        "learningResources": [
+          {
+            "title": "Official PyTorch Tutorials",
+            "type": "doc",
+            "url": "https://pytorch.org/tutorials/",
+            "free": true
+          },
+          {
+            "title": "Deep Learning with PyTorch: A 60 Minute Blitz",
+            "type": "tutorial",
+            "url": "https://pytorch.org/tutorials/beginner/blitz/tensor_tutorial.html",
+            "free": true
+          }
+        ],
+        "practiceActivity": "Train an image classification ResNet model on GPU with data augmentation and early stopping.",
+        "projectApplication": "Train a multimodal embedding classifier to match product images with text queries.",
+        "completionCriteria": [
+          "Tensors, autograd, computational graphs, and GPU acceleration",
+          "Custom Dataset and DataLoader pipelines",
+          "Building CNNs, RNNs, and Transformer building blocks from scratch"
+        ],
+        "status": "not_started",
+        "completionPercentage": 0,
+        "userNotes": ""
+      },
+      {
+        "id": "task_deep_learning_3",
+        "userId": "demo_student_aarav",
+        "skillId": "deep_learning",
+        "skillName": "Neural Networks & Deep Learning",
+        "category": "Deep Learning",
+        "stageNumber": 3,
+        "stageName": "Deep Learning & Neural Networks",
+        "whyItMatters": "Essential for AI/ML Engineer: Forward and backward propagation, loss functions, and gradient-based optimization",
+        "currentProficiency": 0,
+        "targetProficiency": 4,
+        "priority": "High",
+        "priorityScore": 64,
+        "estimatedHours": 45,
+        "prerequisites": [
+          "pytorch"
+        ],
+        "learningResources": [
+          {
+            "title": "Deep Learning Book (Goodfellow et al.)",
+            "type": "doc",
+            "url": "https://www.deeplearningbook.org/",
+            "free": true
+          },
+          {
+            "title": "fast.ai: Practical Deep Learning for Coders",
+            "type": "course",
+            "url": "https://course.fast.ai/",
+            "free": true
+          }
+        ],
+        "practiceActivity": "Implement a convolutional network from scratch and train it on CIFAR-10 with data augmentation.",
+        "projectApplication": "Fine-tune a pre-trained vision transformer for a domain-specific image classification task.",
+        "completionCriteria": [
+          "Forward and backward propagation, loss functions, and gradient-based optimization",
+          "CNN, RNN, and Transformer architecture design tradeoffs",
+          "Regularization techniques (dropout, batch normalization, weight decay)",
+          "Transfer learning and fine-tuning of pre-trained models"
+        ],
+        "status": "not_started",
+        "completionPercentage": 0,
+        "userNotes": ""
+      },
+      {
+        "id": "task_fastapi_4",
+        "userId": "demo_student_aarav",
+        "skillId": "fastapi",
+        "skillName": "FastAPI & REST Model Serving",
+        "category": "API Development",
+        "stageNumber": 4,
+        "stageName": "Modern GenAI & LLM Engineering",
+        "whyItMatters": "Essential for AI/ML Engineer: Asynchronous route handlers and Pydantic validation schemas",
+        "currentProficiency": 0,
+        "targetProficiency": 3,
+        "priority": "High",
+        "priorityScore": 69,
+        "estimatedHours": 25,
+        "prerequisites": [
+          "python"
+        ],
+        "learningResources": [
+          {
+            "title": "FastAPI Official Documentation",
+            "type": "doc",
+            "url": "https://fastapi.tiangolo.com/tutorial/",
+            "free": true
+          }
+        ],
+        "practiceActivity": "Expose a pre-trained ML model via async POST endpoint with request schema validation.",
+        "projectApplication": "Build a high-throughput sentiment classification API with health checks and batching.",
+        "completionCriteria": [
+          "Asynchronous route handlers and Pydantic validation schemas",
+          "Model loading, caching, batching, and inference latency profiling",
+          "API error handling, OpenAPI docs, and authentication"
+        ],
+        "status": "not_started",
+        "completionPercentage": 0,
+        "userNotes": ""
+      },
+      {
+        "id": "task_llm_rag_4",
+        "userId": "demo_student_aarav",
+        "skillId": "llm_rag",
+        "skillName": "LLMs, Prompting & RAG Pipelines",
+        "category": "Generative AI",
+        "stageNumber": 4,
+        "stageName": "Modern GenAI & LLM Engineering",
+        "whyItMatters": "Essential for AI/ML Engineer: Vector embeddings, semantic search, and cosine similarity",
+        "currentProficiency": 0,
+        "targetProficiency": 3,
+        "priority": "High",
+        "priorityScore": 54,
+        "estimatedHours": 35,
+        "prerequisites": [
+          "python",
+          "fastapi"
+        ],
+        "learningResources": [
+          {
+            "title": "LangChain / LlamaIndex Retrieval Guides",
+            "type": "doc",
+            "url": "https://docs.llamaindex.ai/en/stable/",
+            "free": true
+          },
+          {
+            "title": "Hugging Face NLP Course",
+            "type": "course",
+            "url": "https://huggingface.co/learn/nlp-course",
+            "free": true
+          }
+        ],
+        "practiceActivity": "Implement a retrieval-augmented question answering pipeline over customized PDF docs.",
+        "projectApplication": "Develop an intelligent developer documentation assistant with citation links.",
+        "completionCriteria": [
+          "Vector embeddings, semantic search, and cosine similarity",
+          "Vector database integration (ChromaDB / Pinecone / pgvector)",
+          "Chunking strategies, retrieval evaluation, and hallucination reduction"
+        ],
+        "status": "not_started",
+        "completionPercentage": 0,
+        "userNotes": ""
+      },
+      {
+        "id": "task_docker_5",
+        "userId": "demo_student_aarav",
+        "skillId": "docker",
+        "skillName": "Docker & Containerization",
+        "category": "DevOps & Deployment",
+        "stageNumber": 5,
+        "stageName": "MLOps & Production Deployment",
+        "whyItMatters": "Essential for AI/ML Engineer: Writing efficient multi-stage Dockerfiles for Python/ML environments",
+        "currentProficiency": 0,
+        "targetProficiency": 3,
+        "priority": "High",
+        "priorityScore": 70,
+        "estimatedHours": 20,
+        "prerequisites": [],
+        "learningResources": [
+          {
+            "title": "Docker Official Get Started Guide",
+            "type": "doc",
+            "url": "https://docs.docker.com/get-started/",
+            "free": true
+          }
+        ],
+        "practiceActivity": "Containerize a PyTorch inference service with minimal image size and non-root user.",
+        "projectApplication": "Create a full Docker Compose setup linking an AI API service, PostgreSQL, and Redis cache.",
+        "completionCriteria": [
+          "Writing efficient multi-stage Dockerfiles for Python/ML environments",
+          "Managing CUDA dependencies, volumes, and network ports",
+          "Docker Compose orchestration for API + database + vector store"
+        ],
+        "status": "not_started",
+        "completionPercentage": 0,
+        "userNotes": ""
+      },
+      {
+        "id": "task_mlops_5",
+        "userId": "demo_student_aarav",
+        "skillId": "mlops",
+        "skillName": "MLOps & Experiment Tracking",
+        "category": "DevOps & Deployment",
+        "stageNumber": 5,
+        "stageName": "MLOps & Production Deployment",
+        "whyItMatters": "Essential for AI/ML Engineer: Experiment logging with MLflow or Weights & Biases",
+        "currentProficiency": 0,
+        "targetProficiency": 3,
+        "priority": "High",
+        "priorityScore": 52,
+        "estimatedHours": 30,
+        "prerequisites": [
+          "scikit_learn",
+          "docker"
+        ],
+        "learningResources": [
+          {
+            "title": "MLflow Documentation & Quickstart",
+            "type": "doc",
+            "url": "https://mlflow.org/docs/latest/index.html",
+            "free": true
+          },
+          {
+            "title": "Made With ML (MLOps Course)",
+            "type": "course",
+            "url": "https://madewithml.com/",
+            "free": true
+          }
+        ],
+        "practiceActivity": "Log metrics, hyperparameters, and ROC curves across 10 training runs in an MLflow server.",
+        "projectApplication": "Build an automated GitHub Action that trains a baseline model and logs evaluation artifacts.",
+        "completionCriteria": [
+          "Experiment logging with MLflow or Weights & Biases",
+          "Model registry, versioning, and artifact storage",
+          "Data drift detection and automated CI/CD retraining triggers"
+        ],
+        "status": "not_started",
+        "completionPercentage": 0,
+        "userNotes": ""
+      }
+    ]
+  },
   "projects": {
     "demo_student_aarav": [
       {
@@ -503,24 +957,121 @@
             "isCorrect": false
           }
         ],
-        "completedAt": "2026-10-14T15:18:32.793Z"
+        "completedAt": "2026-10-14T17:47:36.531Z"
       },
       {
-        "id": "res_sql",
+        "id": "res_1792174983257_python",
         "userId": "demo_student_aarav",
-        "skillId": "sql",
-        "skillName": "SQL & Relational Databases",
+        "skillId": "python",
+        "skillName": "Python Programming",
         "scorePercentage": 100,
         "totalQuestions": 5,
         "correctAnswersCount": 5,
         "passed": true,
-        "answers": [],
-        "completedAt": "2026-10-16T15:18:32.794Z"
+        "answers": [
+          {
+            "questionId": "py_q1",
+            "selectedOptionIndex": 1,
+            "isCorrect": true
+          },
+          {
+            "questionId": "py_q2",
+            "selectedOptionIndex": 0,
+            "isCorrect": true
+          },
+          {
+            "questionId": "py_q3",
+            "selectedOptionIndex": 1,
+            "isCorrect": true
+          },
+          {
+            "questionId": "py_q4",
+            "selectedOptionIndex": 2,
+            "isCorrect": true
+          },
+          {
+            "questionId": "py_q5",
+            "selectedOptionIndex": 1,
+            "isCorrect": true
+          }
+        ],
+        "completedAt": "2026-10-16T18:23:03.257Z",
+        "attemptId": "att_1792174978909_nhv6df",
+        "contentVersion": 1
+      }
+    ]
+  },
+  "assessmentAttempts": {
+    "demo_student_aarav": [
+      {
+        "id": "att_1792174978909_nhv6df",
+        "userId": "demo_student_aarav",
+        "skillId": "python",
+        "skillName": "Python Programming",
+        "status": "graded",
+        "questionIds": [
+          "py_q1",
+          "py_q2",
+          "py_q3",
+          "py_q4",
+          "py_q5"
+        ],
+        "startedAt": "2026-10-16T18:22:58.908Z",
+        "gradedAt": "2026-10-16T18:23:03.257Z",
+        "result": {
+          "id": "res_1792174983257_python",
+          "userId": "demo_student_aarav",
+          "skillId": "python",
+          "skillName": "Python Programming",
+          "scorePercentage": 100,
+          "totalQuestions": 5,
+          "correctAnswersCount": 5,
+          "passed": true,
+          "answers": [
+            {
+              "questionId": "py_q1",
+              "selectedOptionIndex": 1,
+              "isCorrect": true
+            },
+            {
+              "questionId": "py_q2",
+              "selectedOptionIndex": 0,
+              "isCorrect": true
+            },
+            {
+              "questionId": "py_q3",
+              "selectedOptionIndex": 1,
+              "isCorrect": true
+            },
+            {
+              "questionId": "py_q4",
+              "selectedOptionIndex": 2,
+              "isCorrect": true
+            },
+            {
+              "questionId": "py_q5",
+              "selectedOptionIndex": 1,
+              "isCorrect": true
+            }
+          ],
+          "completedAt": "2026-10-16T18:23:03.257Z",
+          "attemptId": "att_1792174978909_nhv6df",
+          "contentVersion": 1
+        }
       }
     ]
   },
   "activities": {
     "demo_student_aarav": [
+      {
+        "id": "act_1792174983259_h53n",
+        "userId": "demo_student_aarav",
+        "activityType": "assessment",
+        "title": "Passed Python Programming Assessment",
+        "details": "Score: 100% (5/5 correct). Status: Verified.",
+        "hoursSpent": 1,
+        "timestamp": "2026-10-16T18:23:03.257Z"
+      },
       {
         "id": "act_1",
         "userId": "demo_student_aarav",
@@ -528,7 +1079,7 @@
         "title": "Passed Python Verification Assessment",
         "details": "Scored 85% on 5 advanced Python architecture questions.",
         "hoursSpent": 1.5,
-        "timestamp": "2026-10-14T15:18:32.793Z"
+        "timestamp": "2026-10-14T17:47:36.531Z"
       },
       {
         "id": "act_2",
@@ -537,7 +1088,7 @@
         "title": "Completed RAG Pipeline Milestone 1",
         "details": "Implemented recursive text chunking and vector storage with ChromaDB.",
         "hoursSpent": 3.5,
-        "timestamp": "2026-10-15T15:18:32.793Z"
+        "timestamp": "2026-10-15T17:47:36.531Z"
       },
       {
         "id": "act_3",
@@ -546,15 +1097,13 @@
         "title": "Advanced Linear Algebra Exercises",
         "details": "Solved matrix decomposition and gradient descent vector equations.",
         "hoursSpent": 2,
-        "timestamp": "2026-10-16T15:18:32.793Z"
+        "timestamp": "2026-10-16T17:47:36.531Z"
       }
     ]
   },
   "readinessHistory": {
     "demo_student_aarav": [
-      36,
-      42,
-      48
+      29
     ]
   },
   "aiMessages": {
@@ -563,7 +1112,7 @@
         "id": "msg_welcome",
         "role": "assistant",
         "content": "Hello Aarav! I am your SkillForge Career Intelligence Coach. You are targeting the **AI/ML Engineer** role. Based on your profile, you already have solid Python foundations (85% verified) and basic SQL. Your top immediate priority is completing your **PyTorch deep learning foundations** and finishing Milestone 3 of your **Enterprise RAG Pipeline**. What would you like guidance on today?",
-        "timestamp": "2026-10-16T15:18:32.793Z",
+        "timestamp": "2026-10-16T17:47:36.531Z",
         "engineUsed": "Deterministic Advisory Engine",
         "suggestedActions": [
           "What should I learn next?",

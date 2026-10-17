@@ -29,7 +29,7 @@ export const OnboardingPage: React.FC = () => {
   const [fullName, setFullName] = useState(profile?.fullName || '');
   const [educationLevel, setEducationLevel] = useState<any>(profile?.educationLevel || 'Undergraduate');
   const [degree, setDegree] = useState(profile?.degree || 'Computer Science & Engineering');
-  const [graduationYear, setGraduationYear] = useState<number>(profile?.graduationYear || (new Date().getFullYear() + 2));
+  const [graduationYear, setGraduationYear] = useState<number>(() => profile?.graduationYear || (new Date().getFullYear() + 2));
   const [experienceLevel, setExperienceLevel] = useState<any>(profile?.experienceLevel || 'Beginner');
 
   // Step 2: Current Skills & Projects
