@@ -11,12 +11,34 @@
  *   provider errors to users.
  * - The model is overridable via GEMINI_MODEL so operators can migrate when
  *   Google retires a model without a code change.
+ * - Operators can force the deterministic engine with AI_PROVIDER=deterministic
+ *   (see isGeminiConfigured). CallGeminiText itself only requires the API key so
+ *   the explicit Test Connection diagnostics endpoint can still verify the
+ *   provider while the deterministic override is active.
+ * - Every completed call (success or failure) is recorded in memory so the
+ *   /api/ai-provider diagnostics endpoints can report honest, timestamped
+ *   connection status. Records never contain the API key or prompt text.
  */
 
 const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 
+/** True when a GEMINI_API_KEY is present in the server environment (never the value itself). */
+export function hasGeminiApiKey(): boolean {
+  return !!process.env.GEMINI_API_KEY?.trim();
+}
+
+/** True when the operator has explicitly forced the offline deterministic engine. */
+export function isDeterministicOverrideActive(): boolean {
+  return process.env.AI_PROVIDER?.trim().toLowerCase() === 'deterministic';
+}
+
+/**
+ * True when AI features should attempt live Gemini calls right now:
+ * an API key must be present AND the operator must not have forced the
+ * deterministic override via AI_PROVIDER=deterministic.
+ */
 export function isGeminiConfigured(): boolean {
-  return !!process.env.GEMINI_API_KEY;
+  return hasGeminiApiKey() && !isDeterministicOverrideActive();
 }
 
 export function getGeminiModel(): string {
@@ -27,6 +49,56 @@ export function getGeminiModel(): string {
 /** Human-readable engine label that names the exact model that served a reply. */
 export function geminiEngineLabel(): string {
   return `Gemini ${getGeminiModel()} (Live API)`;
+}
+
+export type GeminiCallOutcome =
+  | 'success'
+  | 'not_configured'
+  | 'http_error'
+  | 'timeout'
+  | 'network_error'
+  | 'unusable_response';
+
+/** Sanitized record of the most recent Gemini call of each kind. Never contains the API key or prompts. */
+export interface GeminiCallRecord {
+  outcome: GeminiCallOutcome;
+  model: string;
+  httpStatus?: number;
+  /** Provider-supplied error message or network error text (Google never echoes the key). */
+  detail?: string;
+  at: string;
+}
+
+let lastCall: GeminiCallRecord | null = null;
+let lastSuccess: GeminiCallRecord | null = null;
+let lastFailure: GeminiCallRecord | null = null;
+
+export function getLastGeminiCall(): GeminiCallRecord | null {
+  return lastCall;
+}
+
+export function getLastGeminiSuccess(): GeminiCallRecord | null {
+  return lastSuccess;
+}
+
+export function getLastGeminiFailure(): GeminiCallRecord | null {
+  return lastFailure;
+}
+
+export function recordGeminiCall(record: GeminiCallRecord): void {
+  lastCall = record;
+  if (record.outcome === 'success') {
+    lastSuccess = record;
+  } else {
+    lastFailure = record;
+  }
+}
+
+/** Test helper — clears the in-memory call history. */
+export function clearGeminiCallHistory(): void {
+  lastCall = null;
+  lastSuccess = null;
+  lastFailure = null;
 }
 
 export interface GeminiCallOptions {
@@ -66,6 +138,10 @@ function extractCandidateText(candidate: any): string | null {
   return visible.trim().length > 0 ? visible.trim() : null;
 }
 
+function isTimeoutError(err: unknown): boolean {
+  return err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+}
+
 /**
  * Calls the Gemini generateContent endpoint and returns the *complete*
  * candidate text, or null when the provider is unavailable, refused, timed
@@ -85,10 +161,13 @@ export async function callGeminiText(
   prompt: string,
   options: GeminiCallOptions = {}
 ): Promise<string | null> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
   const model = getGeminiModel();
+  if (!apiKey) {
+    recordGeminiCall({ outcome: 'not_configured', model, at: new Date().toISOString() });
+    return null;
+  }
+
   const {
     temperature = 0.7,
     maxOutputTokens = 2048,
@@ -125,6 +204,13 @@ export async function callGeminiText(
         console.warn(
           `Gemini request failed (HTTP ${response.status}${detail ? `: ${detail}` : ''}) [model: ${model}, attempt ${attempt}/${maxAttempts}]`
         );
+        recordGeminiCall({
+          outcome: 'http_error',
+          model,
+          httpStatus: response.status,
+          detail: detail ?? undefined,
+          at: new Date().toISOString()
+        });
         continue;
       }
 
@@ -143,19 +229,38 @@ export async function callGeminiText(
         console.warn(
           `Gemini response unusable (finishReason=${finishReason}${finishReason === 'MAX_TOKENS' ? ` after ${maxAttempts} attempts` : ''}) [model: ${model}]`
         );
+        recordGeminiCall({
+          outcome: 'unusable_response',
+          model,
+          detail: `finishReason=${finishReason}`,
+          at: new Date().toISOString()
+        });
         return null;
       }
 
       const candidateText = extractCandidateText(candidate);
       if (candidateText) {
+        recordGeminiCall({ outcome: 'success', model, at: new Date().toISOString() });
         return candidateText;
       }
       console.warn(`Gemini returned no usable candidate text [model: ${model}, attempt ${attempt}/${maxAttempts}]`);
+      recordGeminiCall({
+        outcome: 'unusable_response',
+        model,
+        detail: 'no usable candidate text',
+        at: new Date().toISOString()
+      });
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
       console.warn(
         `Gemini request error [model: ${model}, attempt ${attempt}/${maxAttempts}]: ${reason}`
       );
+      recordGeminiCall({
+        outcome: isTimeoutError(err) ? 'timeout' : 'network_error',
+        model,
+        detail: reason,
+        at: new Date().toISOString()
+      });
     }
   }
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
 import type {
   ProofOfSkillChallenge,
@@ -15,10 +16,13 @@ import {
   AlertTriangle,
   Code2,
   FileCheck2,
-  ChevronRight
+  ChevronRight,
+  Terminal
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const ProofOfSkillPage: React.FC = () => {
+  const toast = useToast();
   const [challenges, setChallenges] = useState<ProofOfSkillChallenge[]>([]);
   const [selectedChallenge, setSelectedChallenge] = useState<ProofOfSkillChallenge | null>(null);
   const [solution, setSolution] = useState<string>('');
@@ -50,6 +54,7 @@ export const ProofOfSkillPage: React.FC = () => {
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load Proof of Skill challenges.');
+      toast.error('Failed to load Proof of Skill challenges.');
     } finally {
       setLoading(false);
     }
@@ -69,12 +74,14 @@ export const ProofOfSkillPage: React.FC = () => {
       setEvaluationResult(res.result);
 
       if (res.result.passed) {
-        // Refresh evidence list
+        toast.success(`Challenge passed! Awarded ${res.result.scorePercentage}% score.`);
         const evRes = await api.proofOfSkill.getEvidence();
         setEvidenceList(evRes.evidence);
+      } else {
+        toast.error(`Evaluation failed: ${res.result.explanation}`);
       }
     } catch (err: any) {
-      alert(err.message || 'Evaluation failed.');
+      toast.error(err.message || 'Evaluation failed.');
     } finally {
       setEvaluating(false);
     }
@@ -82,48 +89,71 @@ export const ProofOfSkillPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="page-container" style={{ padding: '2rem 1.5rem', textAlign: 'center' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh' }}>
-          <div className="spin" style={{ width: 40, height: 40, border: '3px solid rgba(211, 138, 25, 0.2)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', marginBottom: '1rem' }} />
-          <h3 style={{ fontFamily: 'var(--font-serif)', color: 'var(--text-primary)' }}>Loading Practical Verification Suite...</h3>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <div role="status" aria-live="polite" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <div className="spin" aria-hidden="true" style={{ width: 40, height: 40, border: '3px solid rgba(211, 138, 25, 0.2)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', margin: '0 auto 1.25rem' }} />
+          <h2 style={{ fontFamily: 'var(--font-serif)', color: 'var(--text-primary)', fontSize: '1.4rem' }}>Loading Practical Verification Suite...</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.4rem' }}>
+            Preparing objective code tests and test assertions.
+          </p>
         </div>
       </div>
     );
   }
 
+  if (error || challenges.length === 0) {
+    return (
+      <div className="card" style={{ padding: '2.5rem', textAlign: 'center', maxWidth: 600, margin: '3rem auto' }}>
+        <AlertTriangle size={44} color="var(--danger)" style={{ margin: '0 auto 1rem' }} />
+        <h2 style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', fontSize: '1.4rem', marginBottom: '0.5rem' }}>
+          Unable to Load Challenges
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', marginBottom: '1.5rem' }}>
+          {error || 'No challenges currently available.'}
+        </p>
+        <button onClick={loadData} className="btn btn-primary">Retry</button>
+      </div>
+    );
+  }
+
   return (
-    <div className="page-container" style={{ padding: '1.5rem', maxWidth: 1240, margin: '0 auto' }}>
+    <div className="os-page-container">
       {/* Header */}
-      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.25rem' }}>
-            <div style={{ padding: '0.45rem', borderRadius: 8, background: 'rgba(211, 138, 25, 0.12)', color: 'var(--color-accent)' }}>
-              <Award size={22} />
-            </div>
-            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.75rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-              Proof of Skill
-            </h1>
+      <header className="os-header">
+        <div className="os-header-left">
+          <div className="os-header-icon">
+            <Award size={24} />
           </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', margin: 0 }}>
-            Practical engineering challenges with automated validation. Replaces self-reported claims with objective evidence.
-          </p>
+          <div>
+            <h1 className="os-header-title">Proof of Skill</h1>
+            <p className="os-header-subtitle">
+              Practical engineering challenges with automated validation. Replaces self-reported claims with objective evidence.
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', borderRadius: 20, background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <ShieldCheck size={15} /> Verified Skills: <strong>{evidenceList.length}</strong>
+        <div className="os-header-actions">
+          <span className="os-chip os-chip-success">
+            <ShieldCheck size={14} />
+            <span>Verified Skills: <strong>{evidenceList.length}</strong></span>
           </span>
+          <Link to="/evidence-graph" className="btn btn-secondary btn-sm">
+            Evidence Graph
+          </Link>
         </div>
-      </div>
+      </header>
 
       {/* Main Two-Column Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 320px) 1fr', gap: '1.5rem', alignItems: 'start' }}>
-        {/* Left Column: Challenge List & Evidence */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1rem' }}>
-            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: '0 0 0.85rem', color: 'var(--text-primary)' }}>
-              Available Practical Challenges
-            </h3>
+      <div className="os-grid-sidebar">
+        {/* Left Column: Challenge List & Verified Evidence */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title" style={{ fontSize: '1rem' }}>
+                <Terminal size={17} color="var(--color-accent)" />
+                Available Challenges
+              </h3>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {challenges.map(c => {
                 const isSelected = selectedChallenge?.id === c.id;
@@ -134,23 +164,29 @@ export const ProofOfSkillPage: React.FC = () => {
                     key={c.id}
                     onClick={() => handleSelectChallenge(c)}
                     style={{
+                      display: 'block',
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
                       textAlign: 'left',
-                      padding: '0.75rem',
+                      padding: '0.85rem 1rem',
                       borderRadius: 'var(--radius-md)',
                       background: isSelected ? 'rgba(211, 138, 25, 0.12)' : 'var(--bg-surface)',
-                      border: isSelected ? '1px solid var(--color-accent)' : '1px solid var(--border-subtle)',
+                      border: isSelected ? '1.5px solid var(--color-accent)' : '1px solid var(--border-subtle)',
                       cursor: 'pointer',
-                      transition: 'all 0.15s ease'
+                      whiteSpace: 'normal',
+                      overflowWrap: 'anywhere',
+                      transition: 'all var(--transition-fast)'
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.88rem', color: isSelected ? 'var(--color-accent)' : 'var(--text-primary)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.25rem' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.9rem', color: isSelected ? 'var(--color-accent)' : 'var(--text-primary)', minWidth: 0, overflowWrap: 'anywhere' }}>
                         {c.title}
                       </span>
-                      {isVerified && <CheckCircle2 size={16} color="#10b981" />}
+                      {isVerified && <CheckCircle2 size={16} color="var(--success)" style={{ flexShrink: 0 }} />}
                     </div>
-                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      <span>{c.targetSkillName}</span> • <span>{c.difficulty}</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', alignItems: 'center', minWidth: 0, fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                      <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{c.targetSkillName}</span> • <span className="os-chip" style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem' }}>{c.difficulty}</span>
                     </div>
                   </button>
                 );
@@ -160,18 +196,30 @@ export const ProofOfSkillPage: React.FC = () => {
 
           {/* Verified Evidence Log */}
           {evidenceList.length > 0 && (
-            <div className="card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1rem' }}>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: '0 0 0.75rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <FileCheck2 size={16} color="var(--color-accent)" /> Verified Evidence Records
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title" style={{ fontSize: '1rem' }}>
+                  <FileCheck2 size={17} color="var(--success)" />
+                  Verified Evidence
+                </h3>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                 {evidenceList.map(e => (
-                  <div key={e.id} style={{ padding: '0.5rem 0.65rem', borderRadius: 'var(--radius-sm)', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', fontSize: '0.8rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  <div
+                    key={e.id}
+                    style={{
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--bg-surface)',
+                      border: '1px solid var(--border-subtle)',
+                      fontSize: '0.82rem'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: 'var(--text-primary)' }}>
                       <span>{e.skillName}</span>
-                      <span style={{ color: '#10b981' }}>{e.scorePercentage}%</span>
+                      <span style={{ color: 'var(--success)' }}>{e.scorePercentage}%</span>
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                       {e.passedTests}/{e.totalTests} tests • {new Date(e.completedAt).toLocaleDateString()}
                     </div>
                   </div>
@@ -183,40 +231,48 @@ export const ProofOfSkillPage: React.FC = () => {
 
         {/* Right Column: Challenge Workspace */}
         {selectedChallenge && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* Challenge Description Card */}
-            <div className="card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.85rem' }}>
                 <div>
-                  <h2 style={{ fontSize: '1.3rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                  <h2 style={{ fontSize: '1.45rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
                     {selectedChallenge.title}
                   </h2>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    <span>Target Skill: <strong style={{ color: 'var(--color-accent)' }}>{selectedChallenge.targetSkillName}</strong></span>
+                  <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginTop: '0.4rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                    <span>Skill: <strong style={{ color: 'var(--color-accent)' }}>{selectedChallenge.targetSkillName}</strong></span>
                     <span>•</span>
                     <span>Est. Time: {selectedChallenge.timeEstimateMinutes} mins</span>
                     <span>•</span>
-                    <span>Pass Threshold: {selectedChallenge.passingScorePercentage}%</span>
+                    <span>Passing Score: {selectedChallenge.passingScorePercentage}%</span>
                   </div>
                 </div>
-                <span style={{ padding: '0.25rem 0.65rem', borderRadius: 12, fontSize: '0.75rem', fontWeight: 700, background: 'rgba(211, 138, 25, 0.15)', color: 'var(--color-accent)' }}>
+
+                <span className="badge badge-accent">
                   {selectedChallenge.difficulty}
                 </span>
               </div>
 
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.5, margin: '0 0 1rem' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '1.25rem' }}>
                 {selectedChallenge.description}
               </p>
 
               {/* Instructions & Constraints */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', background: 'var(--bg-surface)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem' }}>
-                <div>
-                  <h4 style={{ fontSize: '0.82rem', fontWeight: 700, margin: '0 0 0.35rem', color: 'var(--text-primary)' }}>Instructions</h4>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>{selectedChallenge.instructions}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+                <div style={{ background: 'var(--bg-surface)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '0.45rem' }}>
+                    Instructions
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
+                    {selectedChallenge.instructions}
+                  </p>
                 </div>
-                <div>
-                  <h4 style={{ fontSize: '0.82rem', fontWeight: 700, margin: '0 0 0.35rem', color: 'var(--text-primary)' }}>Constraints</h4>
-                  <ul style={{ margin: 0, paddingLeft: '1.15rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+
+                <div style={{ background: 'var(--bg-surface)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '0.45rem' }}>
+                    Constraints
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: '1.15rem', fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                     {selectedChallenge.constraints.map((c, i) => (
                       <li key={i}>{c}</li>
                     ))}
@@ -224,16 +280,29 @@ export const ProofOfSkillPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Test Cases Preview */}
+              {/* Expected Test Assertions */}
               <div>
-                <h4 style={{ fontSize: '0.82rem', fontWeight: 700, margin: '0 0 0.5rem', color: 'var(--text-primary)' }}>
-                  Validation Assertions ({selectedChallenge.testCases.length} suites)
-                </h4>
+                <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                  Validation Assertions ({selectedChallenge.testCases.length} tests)
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                   {selectedChallenge.testCases.map((tc, idx) => (
-                    <div key={tc.id} style={{ padding: '0.45rem 0.75rem', borderRadius: 'var(--radius-sm)', background: 'rgba(48, 35, 25, 0.03)', border: '1px solid var(--border-subtle)', fontSize: '0.78rem', display: 'flex', justifyContent: 'space-between' }}>
+                    <div
+                      key={tc.id}
+                      style={{
+                        padding: '0.55rem 0.85rem',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--bg-card-hover)',
+                        border: '1px solid var(--border-subtle)',
+                        fontSize: '0.8rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
                       <span style={{ color: 'var(--text-primary)' }}>Test #{idx + 1}: {tc.description}</span>
-                      <span style={{ color: 'var(--text-muted)' }}>{tc.expectedOutput}</span>
+                      <span className="os-chip" style={{ fontSize: '0.72rem' }}>{tc.expectedOutput}</span>
                     </div>
                   ))}
                 </div>
@@ -241,12 +310,13 @@ export const ProofOfSkillPage: React.FC = () => {
             </div>
 
             {/* Code Solution Editor */}
-            <div className="card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                  <Code2 size={16} color="var(--color-accent)" /> Solution Implementation
-                </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Safe static evaluation runner</span>
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title" style={{ fontSize: '1.05rem' }}>
+                  <Code2 size={18} color="var(--color-accent)" />
+                  Solution Implementation
+                </h3>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Safe deterministic execution</span>
               </div>
 
               <textarea
@@ -254,18 +324,13 @@ export const ProofOfSkillPage: React.FC = () => {
                 onChange={(e) => setSolution(e.target.value)}
                 rows={12}
                 placeholder="// Enter your solution here..."
+                className="form-textarea"
                 style={{
-                  width: '100%',
-                  fontFamily: 'monospace',
-                  fontSize: '0.85rem',
-                  padding: '1rem',
-                  borderRadius: 'var(--radius-md)',
-                  background: '#1e1e1e',
-                  color: '#d4d4d4',
-                  border: '1px solid var(--border-subtle)',
-                  resize: 'vertical',
-                  marginBottom: '1rem',
-                  lineHeight: 1.45
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.88rem',
+                  lineHeight: 1.5,
+                  minHeight: '220px',
+                  marginBottom: '1.25rem'
                 }}
               />
 
@@ -274,63 +339,86 @@ export const ProofOfSkillPage: React.FC = () => {
                   onClick={handleEvaluate}
                   disabled={evaluating || solution.trim().length === 0}
                   className="btn btn-primary"
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                 >
-                  <Play size={16} />
-                  <span>{evaluating ? 'Running Assertions...' : 'Run Automated Tests'}</span>
+                  {evaluating ? (
+                    <>
+                      <div className="spin" style={{ width: 16, height: 16, border: '2px solid #ffffff', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                      <span>Running Automated Tests...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play size={16} />
+                      <span>Run Automated Tests</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
 
-            {/* Evaluation Results Banner */}
+            {/* Evaluation Results Feedback */}
             {evaluationResult && (
               <div
                 className="card"
                 style={{
-                  background: evaluationResult.passed ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                  border: evaluationResult.passed ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '1.25rem'
+                  borderColor: evaluationResult.passed ? 'rgba(45, 106, 79, 0.4)' : 'rgba(153, 27, 27, 0.4)',
+                  background: evaluationResult.passed ? 'rgba(45, 106, 79, 0.05)' : 'rgba(153, 27, 27, 0.05)'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {evaluationResult.passed ? <CheckCircle2 size={22} color="#10b981" /> : <XCircle size={22} color="#ef4444" />}
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                      {evaluationResult.passed ? 'Challenge Passed & Verified!' : 'Verification Incomplete'}
-                    </h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    {evaluationResult.passed ? (
+                      <CheckCircle2 size={24} color="var(--success)" />
+                    ) : (
+                      <XCircle size={24} color="var(--danger)" />
+                    )}
+                    <div>
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                        {evaluationResult.passed ? 'Challenge Passed & Verified!' : 'Tests Incomplete or Failed'}
+                      </h3>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        Score: <strong>{evaluationResult.scorePercentage}%</strong> ({evaluationResult.testResults.filter(t => t.passed).length}/{evaluationResult.testResults.length} assertions passed)
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: evaluationResult.passed ? '#10b981' : '#ef4444' }}>
-                    {evaluationResult.scorePercentage}%
-                  </div>
+
+                  <span className={`badge ${evaluationResult.passed ? 'badge-mastered' : 'badge-critical'}`}>
+                    {(evaluationResult.evidenceRecord?.evidenceStatus || (evaluationResult.passed ? 'verified_automated_test' : 'unverified')).replace('_', ' ')}
+                  </span>
                 </div>
 
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: '0 0 1rem' }}>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: '1rem' }}>
                   {evaluationResult.explanation}
                 </p>
 
-                {/* Individual Test Results */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                {/* Individual Test Suite Results */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {evaluationResult.testResults.map((tr) => (
                     <div
                       key={tr.testCaseId}
                       style={{
-                        padding: '0.5rem 0.75rem',
+                        padding: '0.65rem 0.9rem',
                         borderRadius: 'var(--radius-sm)',
-                        background: 'var(--bg-surface)',
+                        background: 'var(--bg-card)',
                         border: '1px solid var(--border-subtle)',
+                        fontSize: '0.82rem',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        fontSize: '0.8rem'
+                        gap: '0.5rem'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                        {tr.passed ? <CheckCircle2 size={14} color="#10b981" /> : <XCircle size={14} color="#ef4444" />}
-                        <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{tr.description}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {tr.passed ? (
+                          <CheckCircle2 size={16} color="var(--success)" />
+                        ) : (
+                          <XCircle size={16} color="var(--danger)" />
+                        )}
+                        <span style={{ color: 'var(--text-primary)', fontWeight: tr.passed ? 500 : 700 }}>
+                          {tr.description}
+                        </span>
                       </div>
-                      <span style={{ fontSize: '0.75rem', color: tr.passed ? '#10b981' : '#ef4444' }}>
-                        {tr.passed ? 'PASSED' : tr.error || 'FAILED'} ({tr.executionTimeMs}ms)
+                      <span style={{ fontSize: '0.78rem', color: tr.passed ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
+                        {tr.passed ? 'Passed' : tr.error || 'Failed'}
                       </span>
                     </div>
                   ))}

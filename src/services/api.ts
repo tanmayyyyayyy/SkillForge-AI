@@ -46,7 +46,9 @@ import {
   OpportunityMatchResult,
   PortfolioIntelligenceData,
   PortfolioRepoAnalysis,
-  PortfolioResumeBullet
+  PortfolioResumeBullet,
+  AiProviderStatus,
+  AiProviderTestResult
 } from '../types/index.js';
 import { toUserMessage } from '../utils/errorMessage.js';
 
@@ -378,6 +380,14 @@ export const api = {
         environment?: string;
         aiProviderConfigured: boolean;
       }>('/health')
+  },
+
+  // AI Provider Diagnostics (authenticated; never exposes the API key)
+  aiProvider: {
+    status: () =>
+      request<{ provider: AiProviderStatus }>('/ai-provider/status'),
+    testConnection: () =>
+      request<AiProviderTestResult>('/ai-provider/test', { method: 'POST' })
   },
 
   // Feature 1: SkillForge Radar

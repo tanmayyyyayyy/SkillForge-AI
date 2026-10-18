@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
 import type { ForgedProject, ForgedProjectMilestone } from '../types/index.js';
 import {
@@ -21,6 +22,7 @@ import {
 import { Link } from 'react-router-dom';
 
 export const ProjectForgePage: React.FC = () => {
+  const toast = useToast();
   const [projects, setProjects] = useState<ForgedProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<ForgedProject | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -39,7 +41,6 @@ export const ProjectForgePage: React.FC = () => {
   const [artifactUrl, setArtifactUrl] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [submittingVerification, setSubmittingVerification] = useState<boolean>(false);
-  const [verificationFeedback, setVerificationFeedback] = useState<string | null>(null);
 
   const fetchProjects = async () => {
     try {
@@ -49,13 +50,13 @@ export const ProjectForgePage: React.FC = () => {
       setProjects(res.projects);
       if (res.projects.length > 0) {
         setSelectedProject(res.projects[0]);
-        // Expand first milestone by default
         if (res.projects[0].milestones.length > 0) {
           setExpandedMilestones({ [res.projects[0].milestones[0].id]: true });
         }
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load forged projects');
+    } catch (err: any) {
+      setError(err.message || 'Failed to load forged projects');
+      toast.error('Failed to load forged projects');
     } finally {
       setLoading(false);
     }
@@ -90,8 +91,10 @@ export const ProjectForgePage: React.FC = () => {
       if (res.project.milestones.length > 0) {
         setExpandedMilestones({ [res.project.milestones[0].id]: true });
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Project generation failed');
+      toast.success('Project engineered successfully!');
+    } catch (err: any) {
+      setError(err.message || 'Project generation failed');
+      toast.error(err.message || 'Project generation failed');
     } finally {
       setGenerating(false);
     }
@@ -103,26 +106,21 @@ export const ProjectForgePage: React.FC = () => {
 
     try {
       setSubmittingVerification(true);
-      setVerificationFeedback(null);
       const res = await api.projectForge.verifyMilestone(
         selectedProject.id,
         verifyingMilestone.id,
         { repoUrl: repoUrl || undefined, artifactUrl: artifactUrl || undefined, notes: notes || undefined }
       );
 
-      // Update selected project state
       setSelectedProject(res.project);
       setProjects(prev => prev.map(p => p.id === res.project.id ? res.project : p));
-      setVerificationFeedback('Milestone verified successfully! Evidence has been added to your Career Evidence Graph.');
-      setTimeout(() => {
-        setVerifyingMilestone(null);
-        setRepoUrl('');
-        setArtifactUrl('');
-        setNotes('');
-        setVerificationFeedback(null);
-      }, 1500);
-    } catch (err: unknown) {
-      setVerificationFeedback(err instanceof Error ? err.message : 'Failed to verify milestone');
+      toast.success('Milestone verified! Evidence added to your Career Evidence Graph.');
+      setVerifyingMilestone(null);
+      setRepoUrl('');
+      setArtifactUrl('');
+      setNotes('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to verify milestone');
     } finally {
       setSubmittingVerification(false);
     }
@@ -133,73 +131,59 @@ export const ProjectForgePage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn max-w-7xl mx-auto px-4 py-6">
+    <div className="os-page-container">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[var(--border-subtle)]">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
-              <Hammer className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-                Project Forge
-              </h1>
-              <p className="text-sm text-[var(--text-secondary)]">
-                Architect verifiable, gap-closing projects with milestone evidence tracking.
-              </p>
-            </div>
+      <header className="os-header">
+        <div className="os-header-left">
+          <div className="os-header-icon">
+            <Hammer size={24} />
+          </div>
+          <div>
+            <h1 className="os-header-title">Project Forge</h1>
+            <p className="os-header-subtitle">
+              Architect verifiable, gap-closing projects with milestone evidence tracking.
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Link
-            to="/portfolio-intelligence"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--bg-card)] border border-[var(--border-subtle)] hover:bg-[var(--bg-card-hover)] transition-colors text-[var(--text-secondary)]"
-          >
-            <FolderGit2 className="w-4 h-4 text-emerald-400" />
-            Portfolio Intelligence
+        <div className="os-header-actions">
+          <Link to="/portfolio-intelligence" className="btn btn-secondary btn-sm">
+            <FolderGit2 size={14} />
+            <span>Portfolio Intelligence</span>
           </Link>
-          <Link
-            to="/evidence-graph"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--bg-card)] border border-[var(--border-subtle)] hover:bg-[var(--bg-card-hover)] transition-colors text-[var(--text-secondary)]"
-          >
-            <Award className="w-4 h-4 text-cyan-400" />
-            Evidence Graph
+          <Link to="/evidence-graph" className="btn btn-secondary btn-sm">
+            <Award size={14} />
+            <span>Evidence Graph</span>
           </Link>
         </div>
-      </div>
+      </header>
 
-      {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-3 text-rose-300 text-sm">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {/* Main Grid: Generator & Active Project */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Generate New Project & History */}
-        <div className="space-y-6">
-          {/* Generator Card */}
-          <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>Forge New Project</span>
+      {/* Main Two-Column Layout */}
+      <div className="os-grid-sidebar">
+        {/* Left Column: Generator Card & Project List */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Project Generator Form */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title" style={{ fontSize: '1rem' }}>
+                <Sparkles size={16} color="var(--color-accent)" />
+                Forge New Project
+              </h3>
             </div>
-            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-              Analyzes your current skill gaps and target career role to generate an engineering project complete with security, testing, and milestone rubrics.
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', lineHeight: 1.45, marginBottom: '1.25rem' }}>
+              Engineers an end-to-end architecture plan with testing and security standards to close your skill gaps.
             </p>
 
-            <form onSubmit={handleGenerate} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+            <form onSubmit={handleGenerate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" htmlFor="project-difficulty">
                   Target Difficulty
                 </label>
                 <select
+                  id="project-difficulty"
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
-                  className="w-full px-3 py-2 bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-amber-500"
+                  className="form-select"
                 >
                   <option value="Beginner">Beginner (Foundations)</option>
                   <option value="Intermediate">Intermediate (Full Stack / Microservice)</option>
@@ -208,45 +192,48 @@ export const ProjectForgePage: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                  Focus Gap Skills (comma-separated, optional)
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" htmlFor="gap-skills-input">
+                  Focus Gap Skills (optional)
                 </label>
                 <input
+                  id="gap-skills-input"
                   type="text"
-                  placeholder="e.g. Redis, Docker, PostgreSQL, WebSockets"
+                  placeholder="e.g. Redis, Docker, PostgreSQL"
                   value={gapSkillInput}
                   onChange={(e) => setGapSkillInput(e.target.value)}
-                  className="w-full px-3 py-2 bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-amber-500 placeholder-[var(--text-muted)]"
+                  className="form-input"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" htmlFor="preferred-tech-input">
                   Preferred Technologies (optional)
                 </label>
                 <input
+                  id="preferred-tech-input"
                   type="text"
                   placeholder="e.g. TypeScript, Express, Vitest"
                   value={preferredStackInput}
                   onChange={(e) => setPreferredStackInput(e.target.value)}
-                  className="w-full px-3 py-2 bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-amber-500 placeholder-[var(--text-muted)]"
+                  className="form-input"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={generating}
-                className="w-full py-2.5 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-900 font-semibold rounded-lg text-sm flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50"
+                className="btn btn-primary"
+                style={{ width: '100%', marginTop: '0.25rem' }}
               >
                 {generating ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-                    <span>Architecting Project...</span>
+                    <div className="spin" style={{ width: 16, height: 16, border: '2px solid #ffffff', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                    <span>Architecting Spec...</span>
                   </>
                 ) : (
                   <>
-                    <Hammer className="w-4 h-4" />
+                    <Hammer size={16} />
                     <span>Generate Project Spec</span>
                   </>
                 )}
@@ -254,128 +241,127 @@ export const ProjectForgePage: React.FC = () => {
             </form>
           </div>
 
-          {/* Project History */}
-          <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] space-y-4">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center justify-between">
-              <span>Your Forged Projects</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--bg-page)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
-                {projects.length}
-              </span>
-            </h3>
+          {/* Project History List */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title" style={{ fontSize: '1rem' }}>
+                <FolderGit2 size={16} color="var(--color-accent)" />
+                Forged Projects
+              </h3>
+              <span className="badge badge-medium">{projects.length}</span>
+            </div>
 
             {loading ? (
-              <div className="py-8 flex justify-center">
-                <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+              <div style={{ textAlign: 'center', padding: '1.5rem' }}>
+                <div className="spin" style={{ width: 24, height: 24, border: '2px solid rgba(211, 138, 25, 0.2)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', margin: '0 auto' }} />
               </div>
             ) : projects.length === 0 ? (
-              <p className="text-xs text-[var(--text-secondary)] text-center py-6">
-                No forged projects yet. Click Generate Project Spec to create your first evidence-backed engineering project.
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', textAlign: 'center', padding: '1rem 0', margin: 0 }}>
+                No projects forged yet. Use the form above to generate your first architecture spec.
               </p>
             ) : (
-              <div className="space-y-2">
-                {projects.map((proj) => (
-                  <button
-                    key={proj.id}
-                    onClick={() => setSelectedProject(proj)}
-                    className={`w-full text-left p-3 rounded-xl border transition-all ${
-                      selectedProject?.id === proj.id
-                        ? 'bg-amber-500/10 border-amber-500/30 text-[var(--text-primary)]'
-                        : 'bg-[var(--bg-page)] border-[var(--border-subtle)] hover:border-amber-500/20 text-[var(--text-secondary)]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-semibold truncate max-w-[170px] text-[var(--text-primary)]">
-                        {proj.title}
-                      </span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                        proj.status === 'completed'
-                          ? 'bg-emerald-500/15 text-emerald-400'
-                          : 'bg-amber-500/15 text-amber-400'
-                      }`}>
-                        {proj.difficulty}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-[var(--text-secondary)] truncate">
-                      {proj.targetRole}
-                    </div>
-                  </button>
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {projects.map((proj) => {
+                  const isSelected = selectedProject?.id === proj.id;
+                  return (
+                    <button
+                      key={proj.id}
+                      onClick={() => setSelectedProject(proj)}
+                      style={{
+                        textAlign: 'left',
+                        padding: '0.75rem 0.9rem',
+                        borderRadius: 'var(--radius-md)',
+                        background: isSelected ? 'rgba(211, 138, 25, 0.12)' : 'var(--bg-surface)',
+                        border: isSelected ? '1.5px solid var(--color-accent)' : '1px solid var(--border-subtle)',
+                        cursor: 'pointer',
+                        transition: 'all var(--transition-fast)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.88rem', color: isSelected ? 'var(--color-accent)' : 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
+                          {proj.title}
+                        </span>
+                        <span className={`badge ${proj.status === 'completed' ? 'badge-mastered' : 'badge-high'}`} style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}>
+                          {proj.difficulty}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {proj.targetRole}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Columns: Active Project Spec & Milestones */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Right Column: Active Project Spec & Milestones */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {selectedProject ? (
             <>
-              {/* Project Overview Card */}
-              <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/20">
+              {/* Overview Card */}
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span className="badge badge-accent">
                       {selectedProject.difficulty}
                     </span>
-                    <span className="text-xs text-[var(--text-secondary)] flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      ~{selectedProject.estimatedTotalHours} hours total
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <Clock size={14} /> ~{selectedProject.estimatedTotalHours} hours total
                     </span>
                   </div>
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                    selectedProject.status === 'completed'
-                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                      : 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
-                  }`}>
+
+                  <span className={`badge ${selectedProject.status === 'completed' ? 'badge-mastered' : 'badge-high'}`}>
                     {selectedProject.status === 'completed' ? 'Fully Completed' : 'In Progress'}
                   </span>
                 </div>
 
-                <div>
-                  <h2 className="text-xl font-bold text-[var(--text-primary)]">
-                    {selectedProject.title}
-                  </h2>
-                  <p className="text-xs text-amber-400 mt-0.5">
-                    Target Role: {selectedProject.targetRole}
-                  </p>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.35rem', color: 'var(--text-primary)' }}>
+                  {selectedProject.title}
+                </h2>
+                <div style={{ fontSize: '0.85rem', color: 'var(--color-accent)', fontWeight: 600, marginBottom: '1.25rem' }}>
+                  Target Role: {selectedProject.targetRole}
                 </div>
 
-                <div className="p-4 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] space-y-2">
-                  <div className="text-xs font-semibold text-[var(--text-primary)]">
+                {/* Problem Statement Box */}
+                <div style={{ background: 'var(--bg-surface)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', marginBottom: '1.25rem' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
                     Problem Statement & User Need
                   </div>
-                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
                     {selectedProject.problemStatement}
                   </p>
-                  <div className="text-[11px] text-[var(--text-secondary)] pt-1">
-                    <span className="font-medium text-[var(--text-primary)]">Target Audience:</span> {selectedProject.targetUsers}
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                    <strong style={{ color: 'var(--text-primary)' }}>Target Users:</strong> {selectedProject.targetUsers}
                   </div>
                 </div>
 
-                {/* Targeted Gaps & Tech Stack */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-3.5 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)]">
-                    <div className="text-xs font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-1.5">
-                      <Award className="w-3.5 h-3.5 text-amber-400" />
+                {/* Targeted Gaps & Stack */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+                  <div style={{ padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', background: 'var(--bg-card-hover)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Award size={15} color="var(--color-accent)" />
                       <span>Targeted Skill Gaps</span>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                       {selectedProject.targetedGapSkills.map((gap, i) => (
-                        <span key={i} className="text-[11px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        <span key={i} className="os-chip os-chip-accent">
                           {gap}
                         </span>
                       ))}
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)]">
-                    <div className="text-xs font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-1.5">
-                      <Terminal className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Recommended Architecture</span>
+                  <div style={{ padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', background: 'var(--bg-card-hover)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Terminal size={15} color="var(--color-accent)" />
+                      <span>Recommended Architecture Stack</span>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                       {Object.entries(selectedProject.recommendedStack).flatMap(([cat, items]) =>
                         (items || []).map((t, idx) => (
-                          <span key={`${cat}-${idx}`} className="text-[11px] px-2 py-0.5 rounded-md bg-[var(--bg-card)] text-[var(--text-secondary)] border border-[var(--border-subtle)]">
+                          <span key={`${cat}-${idx}`} className="os-chip">
                             {t}
                           </span>
                         ))
@@ -384,37 +370,37 @@ export const ProjectForgePage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Architecture & Engineering Standards Accordion */}
-                <div className="space-y-3 pt-2">
-                  <div className="p-4 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] text-xs space-y-2">
-                    <div className="font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>Architecture Breakdown</span>
+                {/* Architecture & Engineering Standards */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ padding: '1rem', borderRadius: 'var(--radius-md)', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Layers size={16} color="var(--color-accent)" />
+                      <span>Architecture Outline</span>
                     </div>
-                    <p className="text-[var(--text-secondary)] leading-relaxed whitespace-pre-line">
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', lineHeight: 1.5, margin: 0, whiteSpace: 'pre-line' }}>
                       {selectedProject.architectureOutline}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] space-y-1">
-                      <div className="font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
-                        <Shield className="w-3.5 h-3.5 text-rose-400" />
-                        <span>Security Considerations</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+                    <div style={{ padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Shield size={15} color="var(--danger)" />
+                        <span>Security Standards</span>
                       </div>
-                      <ul className="list-disc list-inside space-y-0.5 text-[var(--text-secondary)] text-[11px]">
+                      <ul style={{ margin: 0, paddingLeft: '1.15rem', fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                         {selectedProject.securityConsiderations.map((sc, i) => (
                           <li key={i}>{sc}</li>
                         ))}
                       </ul>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] space-y-1">
-                      <div className="font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
-                        <FileCode className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Testing Requirements</span>
+                    <div style={{ padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <FileCode size={15} color="var(--success)" />
+                        <span>Testing Standards</span>
                       </div>
-                      <ul className="list-disc list-inside space-y-0.5 text-[var(--text-secondary)] text-[11px]">
+                      <ul style={{ margin: 0, paddingLeft: '1.15rem', fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                         {selectedProject.testingRequirements.map((tr, i) => (
                           <li key={i}>{tr}</li>
                         ))}
@@ -424,97 +410,118 @@ export const ProjectForgePage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Milestones & Evidence Collection */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-amber-400" />
-                    <span>Project Milestones & Verification</span>
+              {/* Milestones & Verification Section */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Layers size={18} color="var(--color-accent)" />
+                    Milestones & Evidence Collection
                   </h3>
-                  <span className="text-xs text-[var(--text-secondary)]">
+                  <span className="badge badge-accent">
                     {selectedProject.milestones.filter(m => m.completed).length} of {selectedProject.milestones.length} verified
                   </span>
                 </div>
 
-                <div className="space-y-3">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                   {selectedProject.milestones.map((milestone) => {
                     const isExpanded = !!expandedMilestones[milestone.id];
                     return (
                       <div
                         key={milestone.id}
-                        className={`rounded-xl border transition-all ${
-                          milestone.completed
-                            ? 'bg-emerald-500/5 border-emerald-500/20'
-                            : 'bg-[var(--bg-card)] border-[var(--border-subtle)]'
-                        }`}
+                        className="card"
+                        style={{
+                          padding: 0,
+                          overflow: 'hidden',
+                          borderColor: milestone.completed ? 'rgba(45, 106, 79, 0.4)' : 'var(--border-subtle)',
+                          background: milestone.completed ? 'rgba(45, 106, 79, 0.03)' : 'var(--bg-card)'
+                        }}
                       >
-                        {/* Header */}
+                        {/* Milestone Accordion Header */}
                         <div
                           onClick={() => toggleMilestone(milestone.id)}
-                          className="p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--bg-card-hover)] transition-colors rounded-xl"
+                          style={{
+                            padding: '1.1rem 1.25rem',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                            background: isExpanded ? 'var(--bg-card-hover)' : 'transparent',
+                            transition: 'background var(--transition-fast)'
+                          }}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${
-                              milestone.completed
-                                ? 'bg-emerald-500/20 text-emerald-400'
-                                : 'bg-slate-800 text-slate-400'
-                            }`}>
-                              {milestone.completed ? (
-                                <CheckCircle2 className="w-4 h-4" />
-                              ) : (
-                                <span className="text-xs font-bold">{milestone.order}</span>
-                              )}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', minWidth: 0, flex: 1 }}>
+                            <div
+                              style={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: '50%',
+                                background: milestone.completed ? 'var(--success)' : 'rgba(211, 138, 25, 0.15)',
+                                color: milestone.completed ? '#ffffff' : 'var(--color-accent)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '0.82rem',
+                                fontWeight: 700,
+                                flexShrink: 0
+                              }}
+                            >
+                              {milestone.completed ? <CheckCircle2 size={16} /> : milestone.order}
                             </div>
-                            <div>
-                              <div className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                                <span>{milestone.title}</span>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{milestone.title}</span>
                                 {milestone.completed && (
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-normal">
-                                    Verified Evidence
+                                  <span className="badge badge-mastered" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}>
+                                    Verified
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs text-[var(--text-secondary)]">
+                              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0.15rem 0 0' }}>
                                 {milestone.objective}
                               </p>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-4">
-                            <span className="text-xs text-[var(--text-secondary)] hidden sm:inline">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                               ~{milestone.estimatedHours}h
                             </span>
                             {isExpanded ? (
-                              <ChevronUp className="w-4 h-4 text-[var(--text-secondary)]" />
+                              <ChevronUp size={18} color="var(--text-muted)" />
                             ) : (
-                              <ChevronDown className="w-4 h-4 text-[var(--text-secondary)]" />
+                              <ChevronDown size={18} color="var(--text-muted)" />
                             )}
                           </div>
                         </div>
 
                         {/* Collapsible Details */}
                         {isExpanded && (
-                          <div className="p-4 pt-0 border-t border-[var(--border-subtle)] space-y-4 text-xs mt-2">
-                            {/* Tasks Breakdown */}
-                            <div className="space-y-1.5 pt-3">
-                              <span className="font-semibold text-[var(--text-primary)]">
-                                Concrete Implementation Tasks
-                              </span>
-                              <div className="space-y-1">
+                          <div style={{ padding: '1.25rem', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.85rem' }}>
+                            {/* Concrete Tasks */}
+                            <div>
+                              <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.45rem' }}>
+                                Implementation Tasks
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                 {milestone.tasks.map((task) => (
                                   <div
                                     key={task.id}
-                                    className="p-2.5 rounded-lg bg-[var(--bg-page)] border border-[var(--border-subtle)] flex items-start justify-between gap-2"
+                                    style={{
+                                      padding: '0.65rem 0.85rem',
+                                      borderRadius: 'var(--radius-sm)',
+                                      background: 'var(--bg-surface)',
+                                      border: '1px solid var(--border-subtle)',
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center',
+                                      gap: '0.5rem'
+                                    }}
                                   >
                                     <div>
-                                      <div className="font-medium text-[var(--text-primary)]">
-                                        {task.title}
-                                      </div>
-                                      <div className="text-[11px] text-[var(--text-secondary)]">
-                                        {task.description}
-                                      </div>
+                                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{task.title}</div>
+                                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{task.description}</div>
                                     </div>
-                                    <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--bg-card)] text-[var(--text-secondary)] flex-shrink-0">
+                                    <span className="os-chip" style={{ fontSize: '0.72rem' }}>
                                       {task.estimatedHours}h
                                     </span>
                                   </div>
@@ -523,11 +530,11 @@ export const ProjectForgePage: React.FC = () => {
                             </div>
 
                             {/* Acceptance Criteria */}
-                            <div className="space-y-1">
-                              <span className="font-semibold text-[var(--text-primary)]">
+                            <div>
+                              <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
                                 Acceptance Criteria
-                              </span>
-                              <ul className="list-disc list-inside space-y-0.5 text-[var(--text-secondary)] text-[11px]">
+                              </div>
+                              <ul style={{ margin: 0, paddingLeft: '1.15rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.82rem' }}>
                                 {milestone.acceptanceCriteria.map((ac, i) => (
                                   <li key={i}>{ac}</li>
                                 ))}
@@ -535,46 +542,39 @@ export const ProjectForgePage: React.FC = () => {
                             </div>
 
                             {/* Demonstrated Skills */}
-                            <div className="flex items-center gap-2 pt-1 flex-wrap">
-                              <span className="font-semibold text-[var(--text-primary)]">
-                                Demonstrates:
-                              </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Demonstrates:</span>
                               {milestone.skillsDemonstrated.map((sk, i) => (
-                                <span
-                                  key={i}
-                                  className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px]"
-                                >
+                                <span key={i} className="os-chip os-chip-accent">
                                   {sk}
                                 </span>
                               ))}
                             </div>
 
-                            {/* Verification Status or Button */}
-                            <div className="pt-3 flex items-center justify-between border-t border-[var(--border-subtle)]">
+                            {/* Action Button or Verified Note */}
+                            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                               {milestone.completed ? (
-                                <div className="text-emerald-400 flex items-center gap-1.5 text-xs">
-                                  <CheckCircle2 className="w-4 h-4" />
-                                  <span>
-                                    Evidence verified on {new Date(milestone.completedAt || '').toLocaleDateString()}
-                                  </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success)', fontSize: '0.84rem', fontWeight: 600 }}>
+                                  <CheckCircle2 size={16} />
+                                  <span>Verified on {new Date(milestone.completedAt || '').toLocaleDateString()}</span>
                                   {milestone.submittedEvidence?.repoUrl && (
                                     <a
                                       href={milestone.submittedEvidence.repoUrl}
                                       target="_blank"
                                       rel="noreferrer"
-                                      className="ml-2 text-cyan-400 hover:underline flex items-center gap-1"
+                                      style={{ color: 'var(--color-accent)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginLeft: '0.5rem' }}
                                     >
                                       <span>Repository</span>
-                                      <ExternalLink className="w-3 h-3" />
+                                      <ExternalLink size={12} />
                                     </a>
                                   )}
                                 </div>
                               ) : (
                                 <button
                                   onClick={() => setVerifyingMilestone(milestone)}
-                                  className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-semibold rounded-lg text-xs hover:from-emerald-600 hover:to-teal-600 transition-all shadow-sm flex items-center gap-1.5"
+                                  className="btn btn-primary btn-sm"
                                 >
-                                  <FolderGit2 className="w-3.5 h-3.5" />
+                                  <FolderGit2 size={14} />
                                   <span>Submit Milestone Evidence</span>
                                 </button>
                               )}
@@ -588,15 +588,13 @@ export const ProjectForgePage: React.FC = () => {
               </div>
             </>
           ) : (
-            <div className="p-12 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] text-center space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/20">
-                <BookOpen className="w-6 h-6" />
-              </div>
-              <h3 className="text-base font-semibold text-[var(--text-primary)]">
+            <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
+              <BookOpen size={40} color="var(--color-accent)" style={{ margin: '0 auto 1rem' }} />
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.3rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
                 No Project Selected
               </h3>
-              <p className="text-xs text-[var(--text-secondary)] max-w-md mx-auto">
-                Generate a new project specification targeted to your career goals, or select an existing project from the left sidebar.
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: 440, margin: '0 auto' }}>
+                Generate a new project specification targeted to your career goals, or select an existing project from the left history list.
               </p>
             </div>
           )}
@@ -605,97 +603,85 @@ export const ProjectForgePage: React.FC = () => {
 
       {/* Milestone Evidence Verification Modal */}
       {verifyingMilestone && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl p-6 shadow-2xl space-y-4 animate-scaleUp">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FolderGit2 className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-base font-bold text-[var(--text-primary)]">
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <FolderGit2 size={20} color="var(--color-accent)" />
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
                   Verify Milestone Evidence
                 </h3>
               </div>
               <button
                 onClick={() => setVerifyingMilestone(null)}
-                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm"
+                className="btn btn-ghost btn-sm"
+                aria-label="Close modal"
               >
                 ✕
               </button>
             </div>
 
-            <div className="text-xs text-[var(--text-secondary)]">
-              Submitting evidence for: <strong className="text-[var(--text-primary)]">{verifyingMilestone.title}</strong>
-            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: '1.25rem' }}>
+              Submitting evidence for: <strong style={{ color: 'var(--text-primary)' }}>{verifyingMilestone.title}</strong>
+            </p>
 
-            {verificationFeedback && (
-              <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/20 text-emerald-300 text-xs">
-                {verificationFeedback}
-              </div>
-            )}
-
-            <form onSubmit={handleVerifySubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+            <form onSubmit={handleVerifySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" htmlFor="repo-url-input">
                   Public Git Repository URL (optional)
                 </label>
                 <input
+                  id="repo-url-input"
                   type="url"
                   placeholder="https://github.com/username/project"
                   value={repoUrl}
                   onChange={(e) => setRepoUrl(e.target.value)}
-                  className="w-full px-3 py-2 bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-emerald-500 placeholder-[var(--text-muted)]"
+                  className="form-input"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" htmlFor="artifact-url-input">
                   Live Deployment or Artifact URL (optional)
                 </label>
                 <input
+                  id="artifact-url-input"
                   type="url"
                   placeholder="https://project-demo.render.com"
                   value={artifactUrl}
                   onChange={(e) => setArtifactUrl(e.target.value)}
-                  className="w-full px-3 py-2 bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-emerald-500 placeholder-[var(--text-muted)]"
+                  className="form-input"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                  Implementation Summary & Verification Notes
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" htmlFor="verification-notes-input">
+                  Implementation Summary & Notes
                 </label>
                 <textarea
+                  id="verification-notes-input"
                   rows={3}
                   placeholder="Describe your implementation, tests written, or architecture choices..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-emerald-500 placeholder-[var(--text-muted)]"
+                  className="form-textarea"
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-3">
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button
                   type="button"
                   onClick={() => setVerifyingMilestone(null)}
-                  className="px-4 py-2 rounded-lg text-xs font-medium bg-[var(--bg-page)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)]"
+                  className="btn btn-secondary btn-sm"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingVerification}
-                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold rounded-lg text-xs flex items-center gap-2 shadow-sm disabled:opacity-50"
+                  className="btn btn-primary btn-sm"
                 >
-                  {submittingVerification ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                      <span>Verifying...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Confirm & Record Evidence</span>
-                    </>
-                  )}
+                  {submittingVerification ? 'Recording Evidence...' : 'Confirm & Record Evidence'}
                 </button>
               </div>
             </form>

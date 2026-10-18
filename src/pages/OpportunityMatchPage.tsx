@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
 import type { OpportunityMatchResult } from '../types/index.js';
 import {
@@ -6,22 +7,22 @@ import {
   Search,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
   Award,
   Layers,
   ArrowRight,
-  ShieldAlert,
+  ShieldCheck,
   Sparkles,
   Info,
-  ChevronRight
+  ChevronRight,
+  FileText
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const OpportunityMatchPage: React.FC = () => {
+  const toast = useToast();
   const [jobDescription, setJobDescription] = useState<string>('');
   const [matchResult, setMatchResult] = useState<OpportunityMatchResult | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
 
   const sampleJobText = `Senior Full-Stack Engineer
 We are seeking an experienced Full Stack Engineer with strong expertise in TypeScript, React, and Node.js.
@@ -34,15 +35,18 @@ Requirements:
 
   const handleEvaluate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!jobDescription.trim()) return;
+    if (!jobDescription.trim()) {
+      toast.info('Please enter or paste a job description.');
+      return;
+    }
 
     try {
       setLoading(true);
-      setError(null);
       const res = await api.opportunityMatch.evaluate({ description: jobDescription });
       setMatchResult(res.match);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to evaluate opportunity match');
+      toast.success('Opportunity alignment evaluated successfully.');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to evaluate opportunity match');
     } finally {
       setLoading(false);
     }
@@ -50,95 +54,92 @@ Requirements:
 
   const loadSample = () => {
     setJobDescription(sampleJobText);
+    toast.info('Sample job description inserted.');
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn max-w-7xl mx-auto px-4 py-6">
+    <div className="os-page-container">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[var(--border-subtle)]">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20">
-              <Briefcase className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-                Opportunity Match Engine
-              </h1>
-              <p className="text-sm text-[var(--text-secondary)]">
-                Deterministic alignment evaluation against real job requirements backed by verified evidence.
-              </p>
-            </div>
+      <header className="os-header">
+        <div className="os-header-left">
+          <div className="os-header-icon">
+            <Briefcase size={24} />
+          </div>
+          <div>
+            <h1 className="os-header-title">Opportunity Match Engine</h1>
+            <p className="os-header-subtitle">
+              Deterministic alignment evaluation against real job requirements backed by verified evidence.
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Link
-            to="/skill-radar"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--bg-card)] border border-[var(--border-subtle)] hover:bg-[var(--bg-card-hover)] transition-colors text-[var(--text-secondary)]"
-          >
-            <Search className="w-4 h-4 text-cyan-400" />
-            Skill Radar
+        <div className="os-header-actions">
+          <Link to="/skill-radar" className="btn btn-secondary btn-sm">
+            <Search size={14} />
+            <span>Skill Radar</span>
           </Link>
-          <Link
-            to="/proof-of-skill"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--bg-card)] border border-[var(--border-subtle)] hover:bg-[var(--bg-card-hover)] transition-colors text-[var(--text-secondary)]"
-          >
-            <Award className="w-4 h-4 text-emerald-400" />
-            Proof of Skill
+          <Link to="/proof-of-skill" className="btn btn-secondary btn-sm">
+            <Award size={14} />
+            <span>Proof of Skill</span>
           </Link>
         </div>
-      </div>
+      </header>
 
-      {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-3 text-rose-300 text-sm">
-          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {/* Input Section */}
-      <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-            <Search className="w-4 h-4 text-cyan-400" />
-            <span>Target Job Description</span>
-          </div>
+      {/* Input Form Card */}
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">
+            <FileText size={18} color="var(--color-accent)" />
+            Target Job Specification
+          </h2>
           <button
             type="button"
             onClick={loadSample}
-            className="text-xs text-cyan-400 hover:underline"
+            className="btn btn-ghost btn-sm"
+            style={{ color: 'var(--color-accent)' }}
           >
             Insert Sample Job Posting
           </button>
         </div>
 
-        <form onSubmit={handleEvaluate} className="space-y-4">
-          <textarea
-            rows={5}
-            placeholder="Paste job posting text here (including required qualifications, preferred skills, and tech stack)..."
-            value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
-            className="w-full px-4 py-3 bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-xl text-sm text-[var(--text-primary)] focus:outline-none focus:border-cyan-500 placeholder-[var(--text-muted)] font-mono leading-relaxed"
-          />
+        <form onSubmit={handleEvaluate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" htmlFor="job-description-input">
+              Job Description & Stated Qualifications
+            </label>
+            <textarea
+              id="job-description-input"
+              rows={6}
+              placeholder="Paste job posting text here (including required qualifications, preferred skills, and tech stack)..."
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              className="form-textarea"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.88rem',
+                minHeight: '140px',
+                lineHeight: 1.5
+              }}
+            />
+          </div>
 
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-xs text-[var(--text-secondary)]">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
               Evaluates against your verified assessments, forged projects, and active profile evidence.
             </span>
             <button
               type="submit"
               disabled={loading || !jobDescription.trim()}
-              className="py-2.5 px-6 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-slate-950 font-semibold rounded-lg text-sm flex items-center gap-2 shadow-sm transition-all disabled:opacity-50"
+              className="btn btn-primary"
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                  <div className="spin" style={{ width: 16, height: 16, border: '2px solid #ffffff', borderTopColor: 'transparent', borderRadius: '50%' }} />
                   <span>Evaluating Alignment...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles size={16} />
                   <span>Run Opportunity Match</span>
                 </>
               )}
@@ -147,87 +148,110 @@ Requirements:
         </form>
       </div>
 
-      {/* Match Results Display */}
+      {/* Match Results */}
       {matchResult && (
-        <div className="space-y-6">
-          {/* Top Score & Notice Banner */}
-          <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Top Score Banner */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
-                <span className="text-xs uppercase tracking-wider text-cyan-400 font-semibold">
+                <span className="badge badge-accent" style={{ marginBottom: '0.5rem' }}>
                   Target Alignment: {matchResult.targetRoleAlignment}
                 </span>
-                <h2 className="text-xl font-bold text-[var(--text-primary)] mt-1">
+                <h2 style={{ fontSize: '1.45rem', fontWeight: 700, margin: '0.35rem 0 0.2rem', color: 'var(--text-primary)' }}>
                   {matchResult.jobTitle}
                 </h2>
                 {matchResult.company && (
-                  <p className="text-xs text-[var(--text-secondary)]">{matchResult.company}</p>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: 0 }}>
+                    {matchResult.company} {matchResult.location ? `• ${matchResult.location}` : ''}
+                  </p>
                 )}
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-3xl font-extrabold text-[var(--text-primary)]">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--color-accent)', lineHeight: 1 }}>
                     {matchResult.overallSkillAlignmentPercentage}%
                   </div>
-                  <div className="text-[11px] text-[var(--text-secondary)]">
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                     Evidence Match Score
                   </div>
                 </div>
 
-                <div className={`px-4 py-2 rounded-xl border text-xs font-bold ${
-                  matchResult.statedRequirementsEligibility === 'Fully Eligible'
-                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                    : matchResult.statedRequirementsEligibility === 'Moderately Eligible'
-                    ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400'
-                    : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
-                }`}>
+                <div
+                  className={`badge ${
+                    matchResult.statedRequirementsEligibility === 'Fully Eligible'
+                      ? 'badge-mastered'
+                      : matchResult.statedRequirementsEligibility === 'Moderately Eligible'
+                      ? 'badge-high'
+                      : 'badge-critical'
+                  }`}
+                  style={{ padding: '0.45rem 0.85rem', fontSize: '0.85rem' }}
+                >
                   {matchResult.statedRequirementsEligibility}
                 </div>
               </div>
             </div>
 
             {/* Scientific Disclaiming Notice */}
-            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-start gap-2.5 text-xs text-slate-400">
-              <Info className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+            <div
+              style={{
+                padding: '0.75rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-subtle)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.65rem',
+                fontSize: '0.82rem',
+                color: 'var(--text-secondary)'
+              }}
+            >
+              <Info size={16} color="var(--color-accent)" style={{ flexShrink: 0, marginTop: 2 }} />
               <span>{matchResult.hiringProbabilityNotice}</span>
             </div>
           </div>
 
           {/* 4-Quadrant Skills Breakdown: Required vs Preferred */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="os-grid-2">
             {/* Required Skills Matched */}
-            <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>Required Skills Matched</span>
-                </div>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">
-                  {matchResult.requiredSkillsMatched.length}
-                </span>
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title" style={{ fontSize: '1.05rem', color: 'var(--success)' }}>
+                  <CheckCircle2 size={18} color="var(--success)" />
+                  Required Skills Matched ({matchResult.requiredSkillsMatched.length})
+                </h3>
               </div>
 
               {matchResult.requiredSkillsMatched.length === 0 ? (
-                <p className="text-xs text-[var(--text-secondary)] italic">
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', margin: 0 }}>
                   No required skills directly match existing verified records.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                   {matchResult.requiredSkillsMatched.map((item) => (
                     <div
                       key={item.skillId}
-                      className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] flex items-start justify-between gap-2"
+                      style={{
+                        padding: '0.75rem 0.9rem',
+                        borderRadius: 'var(--radius-md)',
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-subtle)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
                     >
                       <div>
-                        <div className="text-xs font-semibold text-[var(--text-primary)]">
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
                           {item.name}
                         </div>
-                        <div className="text-[11px] text-[var(--text-secondary)]">
-                          Proficiency: {item.userProficiency} (Required: {item.requiredProficiency})
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          Your Proficiency: Level {item.userProficiency}/5 (Required: Level {item.requiredProficiency}/5)
                         </div>
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium capitalize">
+                      <span className="badge badge-mastered" style={{ textTransform: 'capitalize' }}>
                         {item.evidenceStatus.replace('_', ' ')}
                       </span>
                     </div>
@@ -237,42 +261,49 @@ Requirements:
             </div>
 
             {/* Required Skills Missing */}
-            <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-                  <XCircle className="w-4 h-4 text-rose-400" />
-                  <span>Required Skills Missing</span>
-                </div>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400">
-                  {matchResult.requiredSkillsMissing.length}
-                </span>
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title" style={{ fontSize: '1.05rem', color: 'var(--danger)' }}>
+                  <XCircle size={18} color="var(--danger)" />
+                  Required Skills Missing ({matchResult.requiredSkillsMissing.length})
+                </h3>
               </div>
 
               {matchResult.requiredSkillsMissing.length === 0 ? (
-                <p className="text-xs text-emerald-400">
-                  All stated required skills are covered by your existing profile!
+                <p style={{ fontSize: '0.85rem', color: 'var(--success)', margin: 0 }}>
+                  All stated required skills are covered by your verified records!
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                   {matchResult.requiredSkillsMissing.map((item) => (
                     <div
                       key={item.skillId}
-                      className="p-3 rounded-xl bg-[var(--bg-page)] border border-rose-500/20 flex items-start justify-between gap-2"
+                      style={{
+                        padding: '0.75rem 0.9rem',
+                        borderRadius: 'var(--radius-md)',
+                        background: 'rgba(153, 27, 27, 0.05)',
+                        border: '1px solid rgba(153, 27, 27, 0.2)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
                     >
                       <div>
-                        <div className="text-xs font-semibold text-[var(--text-primary)]">
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
                           {item.name}
                         </div>
-                        <div className="text-[11px] text-[var(--text-secondary)]">
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                           {item.gapExplanation}
                         </div>
                       </div>
                       <Link
                         to="/proof-of-skill"
-                        className="text-[10px] px-2.5 py-1 rounded bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 transition-colors font-medium flex items-center gap-1 flex-shrink-0"
+                        className="btn btn-outline btn-sm"
+                        style={{ flexShrink: 0 }}
                       >
                         <span>Verify</span>
-                        <ChevronRight className="w-3 h-3" />
+                        <ChevronRight size={13} />
                       </Link>
                     </div>
                   ))}
@@ -281,33 +312,39 @@ Requirements:
             </div>
 
             {/* Preferred Skills Matched */}
-            <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-                  <Award className="w-4 h-4 text-cyan-400" />
-                  <span>Preferred Qualifications Matched</span>
-                </div>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400">
-                  {matchResult.preferredSkillsMatched.length}
-                </span>
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title" style={{ fontSize: '1.05rem', color: 'var(--color-accent)' }}>
+                  <Award size={18} color="var(--color-accent)" />
+                  Preferred Qualifications Matched ({matchResult.preferredSkillsMatched.length})
+                </h3>
               </div>
 
               {matchResult.preferredSkillsMatched.length === 0 ? (
-                <p className="text-xs text-[var(--text-secondary)] italic">
-                  None of the optional/preferred skills currently have matching evidence.
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', margin: 0 }}>
+                  None of the optional preferred skills currently have matching evidence.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                   {matchResult.preferredSkillsMatched.map((item) => (
                     <div
                       key={item.skillId}
-                      className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] flex items-center justify-between gap-2"
+                      style={{
+                        padding: '0.75rem 0.9rem',
+                        borderRadius: 'var(--radius-md)',
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-subtle)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
                     >
-                      <span className="text-xs font-semibold text-[var(--text-primary)]">
+                      <span style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
                         {item.name}
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400">
-                        {item.userProficiency}
+                      <span className="os-chip os-chip-accent">
+                        Level {item.userProficiency}/5
                       </span>
                     </div>
                   ))}
@@ -316,27 +353,24 @@ Requirements:
             </div>
 
             {/* Preferred Skills Missing */}
-            <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-                  <Layers className="w-4 h-4 text-amber-400" />
-                  <span>Preferred Qualifications Missing</span>
-                </div>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400">
-                  {matchResult.preferredSkillsMissing.length}
-                </span>
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title" style={{ fontSize: '1.05rem', color: 'var(--text-secondary)' }}>
+                  <Layers size={18} color="var(--color-accent)" />
+                  Preferred Qualifications Missing ({matchResult.preferredSkillsMissing.length})
+                </h3>
               </div>
 
               {matchResult.preferredSkillsMissing.length === 0 ? (
-                <p className="text-xs text-[var(--text-secondary)]">
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
                   No missing preferred qualifications identified.
                 </p>
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {matchResult.preferredSkillsMissing.map((item) => (
                     <span
                       key={item.skillId}
-                      className="text-xs px-2.5 py-1 rounded-lg bg-[var(--bg-page)] border border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                      className="os-chip"
                     >
                       {item.name}
                     </span>
@@ -347,56 +381,83 @@ Requirements:
           </div>
 
           {/* Actionable Recommendations */}
-          <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] space-y-4">
-            <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-cyan-400" />
-              <span>Recommended Gap-Closing Actions</span>
-            </h3>
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">
+                <Sparkles size={18} color="var(--color-accent)" />
+                Recommended Gap-Closing Actions
+              </h3>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="os-grid-2">
               {matchResult.recommendedActions.map((act, i) => (
                 <Link
                   key={i}
                   to={act.route}
-                  className="p-4 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] hover:border-cyan-500/40 transition-all flex items-start justify-between gap-3 group"
+                  style={{
+                    padding: '1.15rem',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    gap: '0.75rem',
+                    textDecoration: 'none',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                  className="card-hover"
                 >
-                  <div className="space-y-1">
-                    <div className="text-xs font-bold text-[var(--text-primary)] group-hover:text-cyan-400 transition-colors">
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)', marginBottom: '0.3rem' }}>
                       {act.title}
                     </div>
-                    <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', lineHeight: 1.45, margin: 0 }}>
                       {act.detail}
                     </p>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-cyan-400 flex-shrink-0 mt-0.5 group-hover:translate-x-0.5 transition-all" />
+                  <ArrowRight size={16} color="var(--color-accent)" style={{ flexShrink: 0, marginTop: 3 }} />
                 </Link>
               ))}
             </div>
           </div>
 
-          {/* Traceable Explainability Audit Trail */}
-          <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] space-y-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-              <ShieldAlert className="w-4 h-4 text-indigo-400" />
-              <span>Transparent Reasoning & Source Trace</span>
+          {/* Transparent Reasoning & Provenance Trace */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">
+                <ShieldCheck size={18} color="var(--color-accent)" />
+                Transparent Reasoning & Provenance Trace
+              </h3>
             </div>
-            <p className="text-xs text-[var(--text-secondary)]">
-              Every score element is derived deterministically from explicit criteria and verified user records:
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: '1.25rem' }}>
+              Every evaluation metric is traceable deterministically to explicit criteria and verified user records:
             </p>
 
-            <div className="space-y-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               {matchResult.explainabilityTrace.map((trace, idx) => (
                 <div
                   key={idx}
-                  className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border-subtle)] text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    fontSize: '0.85rem'
+                  }}
                 >
-                  <div className="font-semibold text-[var(--text-primary)] min-w-[150px]">
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', minWidth: 160 }}>
                     {trace.dimension}
                   </div>
-                  <div className="text-[11px] text-[var(--text-secondary)] flex-1">
-                    <span className="text-[var(--text-primary)] font-medium">Source:</span> {trace.sourceEvidence}
+                  <div style={{ color: 'var(--text-secondary)', flex: 1, minWidth: 200, fontSize: '0.82rem' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Source:</span> {trace.sourceEvidence}
                   </div>
-                  <div className="text-[11px] text-cyan-400">
+                  <div style={{ color: 'var(--color-accent)', fontWeight: 600, fontSize: '0.82rem' }}>
                     {trace.impactOnAssessment}
                   </div>
                 </div>

@@ -20,6 +20,12 @@ services:
       # If omitted, SkillForge AI automatically uses the offline Deterministic Advisory Engine.
       # - key: GEMINI_API_KEY
       #   sync: false
+      # OPTIONAL: Override the default Gemini model (default: gemini-3.8-flash).
+      # - key: GEMINI_MODEL
+      #   sync: false
+      # OPTIONAL: Force the offline Deterministic Advisory Engine even with a key set.
+      # - key: AI_PROVIDER
+      #   value: deterministic
       # OPTIONAL: Persistent Disk support (requires Render Starter plan or higher).
       # On Render Free tier, filesystem is ephemeral and resets on sleep/restart.
       # - key: SKILLFORGE_DB_FILE

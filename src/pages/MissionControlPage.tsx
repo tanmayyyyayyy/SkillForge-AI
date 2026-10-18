@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
 import type { CareerMissionControlSummary, MissionControlAction, MissionActionState } from '../types/index.js';
 import {
@@ -7,7 +8,7 @@ import {
   Clock,
   AlertCircle,
   ArrowRight,
-  ShieldAlert,
+  ShieldCheck,
   History,
   Target,
   Sparkles,
@@ -18,6 +19,7 @@ import {
 import { Link } from 'react-router-dom';
 
 export const MissionControlPage: React.FC = () => {
+  const toast = useToast();
   const [summary, setSummary] = useState<CareerMissionControlSummary | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +37,7 @@ export const MissionControlPage: React.FC = () => {
       setSummary(res.missionControl);
     } catch (err: any) {
       setError(err.message || 'Failed to load Career Mission Control.');
+      toast.error('Failed to load Career Mission Control.');
     } finally {
       setLoading(false);
     }
@@ -44,9 +47,23 @@ export const MissionControlPage: React.FC = () => {
     try {
       setActionUpdating(actionId);
       await api.missionControl.updateActionState(actionId, newState);
+      toast.success(`Action marked ${newState.replace('_', ' ')}.`);
       await fetchSummary();
     } catch (err: any) {
-      alert(err.message || 'Failed to update action state.');
+      toast.error(err.message || 'Failed to update action state.');
+    } finally {
+      setActionUpdating(null);
+    }
+  };
+
+  const handleApprove = async (actionId: string) => {
+    try {
+      setActionUpdating(actionId);
+      await api.missionControl.updateActionState(actionId, 'approved');
+      toast.success('Action approved and logged to audit trail.');
+      await fetchSummary();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to approve action.');
     } finally {
       setActionUpdating(null);
     }
@@ -54,10 +71,10 @@ export const MissionControlPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="page-container" style={{ padding: '2rem 1.5rem', textAlign: 'center' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh' }}>
-          <div className="spin" style={{ width: 40, height: 40, border: '3px solid rgba(211, 138, 25, 0.2)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', marginBottom: '1rem' }} />
-          <h3 style={{ fontFamily: 'var(--font-serif)', color: 'var(--text-primary)' }}>Loading Mission Control HUD...</h3>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <div role="status" aria-live="polite" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <div className="spin" aria-hidden="true" style={{ width: 40, height: 40, border: '3px solid rgba(211, 138, 25, 0.2)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', margin: '0 auto 1.25rem' }} />
+          <h2 style={{ fontFamily: 'var(--font-serif)', color: 'var(--text-primary)', fontSize: '1.4rem' }}>Loading Mission Control HUD...</h2>
         </div>
       </div>
     );
@@ -65,86 +82,88 @@ export const MissionControlPage: React.FC = () => {
 
   if (error || !summary) {
     return (
-      <div className="page-container" style={{ padding: '2rem 1.5rem' }}>
-        <div className="card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', padding: '2rem', textAlign: 'center', borderRadius: 'var(--radius-lg)' }}>
-          <AlertCircle size={40} color="var(--color-danger, #d9534f)" style={{ margin: '0 auto 1rem' }} />
-          <h3 style={{ color: 'var(--text-primary)' }}>Failed to Load Mission Control</h3>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>{error || 'Unable to load mission data.'}</p>
-          <button onClick={fetchSummary} className="btn btn-primary">Retry</button>
-        </div>
+      <div className="card" style={{ padding: '2.5rem', textAlign: 'center', maxWidth: 600, margin: '3rem auto' }}>
+        <AlertCircle size={44} color="var(--danger)" style={{ margin: '0 auto 1rem' }} />
+        <h2 style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', fontSize: '1.4rem', marginBottom: '0.5rem' }}>
+          Failed to Load Mission Control
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', marginBottom: '1.5rem' }}>
+          {error || 'Unable to load mission data.'}
+        </p>
+        <button onClick={fetchSummary} className="btn btn-primary">Retry</button>
       </div>
     );
   }
 
   return (
-    <div className="page-container" style={{ padding: '1.5rem', maxWidth: 1240, margin: '0 auto' }}>
+    <div className="os-page-container">
       {/* Header */}
-      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.25rem' }}>
-            <div style={{ padding: '0.45rem', borderRadius: 8, background: 'rgba(211, 138, 25, 0.12)', color: 'var(--color-accent)' }}>
-              <Rocket size={22} />
-            </div>
-            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.75rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-              Career Mission Control
-            </h1>
+      <header className="os-header">
+        <div className="os-header-left">
+          <div className="os-header-icon">
+            <Rocket size={24} />
           </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', margin: 0 }}>
-            Unified command center orchestrating proof, projects, interviews, and roadmaps into action.
-          </p>
+          <div>
+            <h1 className="os-header-title">Career Mission Control</h1>
+            <p className="os-header-subtitle">
+              Unified command center orchestrating proof, projects, interviews, and roadmaps into action.
+            </p>
+          </div>
         </div>
 
-        <button onClick={fetchSummary} className="btn btn-secondary btn-sm">
-          Refresh HUD
-        </button>
-      </div>
+        <div className="os-header-actions">
+          <button onClick={fetchSummary} className="btn btn-secondary btn-sm">
+            Refresh HUD
+          </button>
+        </div>
+      </header>
 
-      {/* Top HUD Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+      {/* Top HUD Metrics */}
+      <div className="os-grid-3">
         {/* Objective */}
-        <div className="card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.78rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: 'var(--text-muted)', fontSize: '0.78rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>
             <Target size={15} color="var(--color-accent)" /> Target Role Objective
           </div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+          <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
             {summary.careerObjective.roleTitle}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
             <span>Readiness: <strong style={{ color: 'var(--color-accent)' }}>{summary.careerObjective.currentReadiness}%</strong></span>
-            <span>Goal: 85%</span>
+            <span>Target: 85%</span>
           </div>
         </div>
 
         {/* Active Milestone */}
-        <div className="card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.78rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>
-            <Clock size={15} color="#3b82f6" /> Active Milestone
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: 'var(--text-muted)', fontSize: '0.78rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>
+            <Clock size={15} color="var(--info)" /> Active Milestone
           </div>
-          <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
-            {summary.activeMilestone?.title || 'Foundational Milestone Execution'}
+          <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+            {summary.activeMilestone?.title || 'Core Engineering Track Execution'}
           </div>
-          <div style={{ height: 6, background: 'rgba(0,0,0,0.08)', borderRadius: 3, overflow: 'hidden', marginTop: '0.5rem' }}>
-            <div style={{ height: '100%', width: `${summary.activeMilestone?.progressPercentage || 50}%`, background: '#3b82f6', borderRadius: 3 }} />
+          <div style={{ height: 7, background: 'var(--color-progress-track)', borderRadius: 4, overflow: 'hidden', marginTop: '0.65rem' }}>
+            <div style={{ height: '100%', width: `${summary.activeMilestone?.progressPercentage || 50}%`, background: 'var(--info)', borderRadius: 4 }} />
           </div>
         </div>
 
         {/* Priority Counts */}
-        <div className="card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.78rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>
-            <Sparkles size={15} color="#10b981" /> Action Execution State
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: 'var(--text-muted)', fontSize: '0.78rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>
+            <Sparkles size={15} color="var(--success)" /> Action Execution State
           </div>
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.4rem' }}>
             <div>
-              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-accent)' }}>{summary.topActionablePriorities.length}</div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Actionable</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-accent)' }}>{summary.topActionablePriorities.length}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Actionable</div>
             </div>
             <div>
-              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#10b981' }}>{summary.completedTasks.length}</div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Completed</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--success)' }}>{summary.completedTasks.length}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Completed</div>
             </div>
             <div>
-              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ef4444' }}>{summary.blockedTasks.length}</div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Blocked</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--danger)' }}>{summary.blockedTasks.length}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Blocked</div>
             </div>
           </div>
         </div>
@@ -156,25 +175,22 @@ export const MissionControlPage: React.FC = () => {
           className="card"
           style={{
             background: 'linear-gradient(135deg, rgba(211, 138, 25, 0.09) 0%, rgba(245, 166, 35, 0.04) 100%)',
-            border: '1px solid rgba(211, 138, 25, 0.35)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '1.25rem 1.5rem',
-            marginBottom: '1.5rem',
+            border: '1.5px solid rgba(211, 138, 25, 0.35)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
-            gap: '1rem'
+            gap: '1.25rem'
           }}
         >
-          <div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-accent)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-              Highest Priority Recommended Action
-            </div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 0.3rem', color: 'var(--text-primary)' }}>
+          <div style={{ minWidth: 0 }}>
+            <span className="badge badge-accent" style={{ marginBottom: '0.4rem' }}>
+              Highest Priority Action
+            </span>
+            <h2 style={{ fontSize: '1.35rem', fontWeight: 700, margin: '0.35rem 0 0.25rem', color: 'var(--text-primary)' }}>
               {summary.recommendedNextAction.title}
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: 0 }}>
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, maxWidth: 760 }}>
               {summary.recommendationReason}
             </p>
           </div>
@@ -182,7 +198,7 @@ export const MissionControlPage: React.FC = () => {
           <Link
             to={summary.recommendedNextAction.route}
             className="btn btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.25rem' }}
+            style={{ flexShrink: 0 }}
           >
             <span>{summary.recommendedNextAction.actionLabel}</span>
             <ArrowRight size={16} />
@@ -190,130 +206,163 @@ export const MissionControlPage: React.FC = () => {
         </div>
       )}
 
-      {/* Top 3 Actionable Priorities */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.85rem', color: 'var(--text-primary)' }}>
+      {/* Top Actionable Priorities */}
+      <div>
+        <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.35rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-primary)' }}>
           Top Actionable Priorities
-        </h3>
+        </h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          {summary.topActionablePriorities.map((action) => (
-            <div
-              key={action.id}
-              className="card"
-              style={{
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-lg)',
-                padding: '1.25rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '1rem'
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 280 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                  <span
-                    style={{
-                      padding: '0.2rem 0.5rem',
-                      borderRadius: 10,
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      background: action.priority === 'Critical' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(211, 138, 25, 0.15)',
-                      color: action.priority === 'Critical' ? '#ef4444' : 'var(--color-accent)'
-                    }}
-                  >
-                    {action.priority}
-                  </span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    State: <strong>{action.state.toUpperCase()}</strong>
-                  </span>
-                </div>
-                <h4 style={{ fontSize: '1.05rem', fontWeight: 700, margin: '0 0 0.25rem', color: 'var(--text-primary)' }}>
-                  {action.title}
-                </h4>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0 0 0.5rem' }}>
-                  {action.description}
-                </p>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  Criteria: <em>{action.completionCondition}</em>
-                </div>
-              </div>
+          {summary.topActionablePriorities.map((action, idx) => {
+            const isBlocked = action.state === 'blocked';
+            const isUpdating = actionUpdating === action.id;
 
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                {action.state === 'suggested' && (
-                  <button
-                    onClick={() => handleStateChange(action.id, 'approved')}
-                    disabled={actionUpdating === action.id}
-                    className="btn btn-secondary btn-sm"
-                  >
-                    Approve
-                  </button>
-                )}
-                {action.state === 'approved' && (
-                  <button
-                    onClick={() => handleStateChange(action.id, 'in_progress')}
-                    disabled={actionUpdating === action.id}
-                    className="btn btn-secondary btn-sm"
-                  >
-                    Start
-                  </button>
-                )}
-                <Link
-                  to={action.route}
-                  className="btn btn-primary btn-sm"
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                >
-                  <span>{action.actionLabel}</span>
-                  <ChevronRight size={14} />
-                </Link>
+            return (
+              <div
+                key={action.id}
+                className="card"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '1rem',
+                  padding: '1.15rem 1.4rem'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem', flex: 1, minWidth: 260 }}>
+                  <span style={{ fontWeight: 800, color: 'var(--color-accent)', fontSize: '1.1rem', minWidth: 20 }}>
+                    {idx + 1}
+                  </span>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-primary)' }}>
+                        {action.title}
+                      </span>
+                      <span className="os-chip" style={{ fontSize: '0.72rem' }}>
+                        {action.kind.replace('_', ' ')}
+                      </span>
+                      <span className={`badge ${
+                        action.state === 'completed'
+                          ? 'badge-mastered'
+                          : action.state === 'in_progress'
+                          ? 'badge-high'
+                          : action.state === 'blocked'
+                          ? 'badge-critical'
+                          : 'badge-medium'
+                      }`}>
+                        {action.state.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                      {action.description}
+                    </p>
+
+                    {action.blockedReason && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-critical, #c53030)', marginTop: '0.35rem' }}>
+                        Blocked: {action.blockedReason}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Controls */}
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
+                  {action.state === 'suggested' && (
+                    <button
+                      onClick={() => handleApprove(action.id)}
+                      disabled={isUpdating}
+                      className="btn btn-secondary btn-sm"
+                    >
+                      Approve Action
+                    </button>
+                  )}
+
+                  {action.state === 'in_progress' && (
+                    <button
+                      onClick={() => handleStateChange(action.id, 'completed')}
+                      disabled={isUpdating}
+                      className="btn btn-primary btn-sm"
+                    >
+                      <CheckCircle2 size={14} />
+                      <span>Mark Complete</span>
+                    </button>
+                  )}
+
+                  <Link to={action.route} className="btn btn-outline btn-sm">
+                    <span>{action.actionLabel}</span>
+                    <ChevronRight size={13} />
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* Decision Audit Trail */}
-      {summary.decisionAuditTrail.length > 0 && (
-        <div className="card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-            <History size={18} color="var(--color-accent)" />
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-              Career Decision Audit Log
-            </h3>
-          </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginBottom: '1rem' }}>
-            Immutable record of user-approved career milestones, action state transitions, and roadmap choices.
-          </p>
+      {/* Human-in-the-Loop Audit Trail */}
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">
+            <ShieldCheck size={18} color="var(--color-accent)" />
+            Human-in-the-Loop Decision Audit Trail
+          </h2>
+          <span className="os-chip">{summary.decisionAuditTrail.length} Logged Events</span>
+        </div>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: '1.25rem' }}>
+          All automated recommendations require explicit student confirmation prior to mutating major career plans or roadmap deliverables.
+        </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {summary.decisionAuditTrail.map((dec) => (
+        {summary.decisionAuditTrail.length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', fontStyle: 'italic', margin: 0 }}>
+            No recent state modifications recorded in this session.
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {summary.decisionAuditTrail.map((entry) => (
               <div
-                key={dec.id}
+                key={entry.id}
                 style={{
-                  padding: '0.65rem 0.85rem',
+                  padding: '0.75rem 1rem',
                   borderRadius: 'var(--radius-sm)',
                   background: 'var(--bg-surface)',
                   border: '1px solid var(--border-subtle)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  fontSize: '0.82rem'
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
+                  fontSize: '0.84rem'
                 }}
               >
-                <div>
-                  <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{dec.title}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{dec.rationale}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <History size={15} color="var(--color-accent)" />
+                  <div>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{entry.title}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                      ({entry.decisionType.replace('_', ' ')})
+                    </span>
+                    {entry.rationale && (
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                        {entry.rationale}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  {new Date(dec.timestamp).toLocaleString()}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.78rem' }}>
+                  <span className={`badge ${entry.approvedByUser ? 'badge-mastered' : 'badge-high'}`}>
+                    {entry.approvedByUser ? 'Approved' : 'Pending Approval'}
+                  </span>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

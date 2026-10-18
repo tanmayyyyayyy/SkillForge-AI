@@ -21,6 +21,7 @@
   --bg-card: #F3EBDD;
   --bg-card-hover: #F8F0E1;
   --bg-surface: #E8DCCB;
+  --bg-page: #FAF5EC;
   --bg-subtle: rgba(48, 35, 25, 0.05);
 
   --border-subtle: #D9CCBA;
@@ -146,6 +147,8 @@ button {
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   box-shadow: var(--shadow-sm);
+  min-width: 0;
+  overflow-wrap: anywhere;
   transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -153,10 +156,22 @@ button {
   border-color: var(--border-medium);
 }
 
+.card-hover {
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.card-hover:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-card-hover);
+  box-shadow: var(--shadow-sm);
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
   margin-bottom: 1.25rem;
   gap: 1rem;
 }
@@ -167,6 +182,8 @@ button {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Buttons — one consistent system across all variants */
@@ -184,7 +201,10 @@ button {
   border: 1px solid transparent;
   background: var(--bg-surface);
   color: var(--text-primary);
-  white-space: nowrap;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
   cursor: pointer;
   text-decoration: none;
   user-select: none;
@@ -293,6 +313,13 @@ button {
   border-radius: var(--radius-md);
 }
 
+/* Full-width button for card-contained actions — never exceeds its container. */
+.btn-block {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+}
+
 /* Icon-only button — always pair with an aria-label */
 .btn-icon {
   min-width: var(--control-height);
@@ -311,11 +338,15 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  max-width: 100%;
   padding: 0.25rem 0.65rem;
   font-size: 0.78rem;
   font-weight: 600;
   border-radius: var(--radius-full);
   letter-spacing: 0.02em;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .badge-critical {
@@ -346,6 +377,12 @@ button {
   background: #DCFCE7;
   color: #166534;
   border: 1px solid #86EFAC;
+}
+
+.badge-accent {
+  background: rgba(211, 138, 25, 0.12);
+  color: #8F5605;
+  border: 1px solid rgba(211, 138, 25, 0.32);
 }
 
 .badge-pill {
@@ -710,6 +747,163 @@ button {
 .toast-success { border-left: 4px solid var(--success); }
 .toast-error { border-left: 4px solid var(--danger); }
 .toast-info { border-left: 4px solid var(--primary); }
+
+/* ==================================================
+   CAREER INTELLIGENCE OS — UNIFIED LAYOUT SYSTEM
+   ================================================== */
+.os-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  width: 100%;
+}
+
+.os-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.os-header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.os-header-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(211, 138, 25, 0.12);
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(211, 138, 25, 0.22);
+}
+
+.os-header-title {
+  font-family: var(--font-serif);
+  font-size: 1.85rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.os-header-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  margin-top: 0.3rem;
+  max-width: 760px;
+  overflow-wrap: anywhere;
+}
+
+.os-header-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+}
+
+.os-grid-sidebar {
+  display: grid;
+  grid-template-columns: minmax(min(290px, 100%), 350px) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.os-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: 1.25rem;
+}
+
+.os-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 1.25rem;
+}
+
+.os-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 1rem;
+}
+
+/* Grid children must be allowed to shrink below their content's intrinsic width
+   or long titles/labels push cards past the column boundary. */
+.os-grid-sidebar > *,
+.os-grid-2 > *,
+.os-grid-3 > *,
+.os-grid-4 > * {
+  min-width: 0;
+}
+
+.os-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.os-chip-accent {
+  background: rgba(211, 138, 25, 0.12);
+  border-color: rgba(211, 138, 25, 0.25);
+  color: var(--color-accent);
+}
+
+.os-chip-success {
+  background: rgba(45, 106, 79, 0.12);
+  border-color: rgba(45, 106, 79, 0.25);
+  color: var(--success);
+}
+
+.os-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .os-grid-sidebar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .os-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .os-header-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+  .os-header-title {
+    font-size: 1.5rem;
+  }
+  .os-grid-2, .os-grid-3, .os-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 /* Print Media Styles */
 @media print {

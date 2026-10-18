@@ -417,6 +417,43 @@ export interface AiCoachMessage {
 }
 
 /**
+ * Runtime AI provider diagnostics reported by the backend.
+ * Never contains the Gemini API key.
+ */
+export type AiProviderHealth =
+  | 'connected'
+  | 'not_configured'
+  | 'not_verified'
+  | 'request_failed'
+  | 'fallback_active';
+
+export interface AiProviderStatus {
+  /** Provider currently serving AI features. */
+  provider: 'gemini' | 'deterministic';
+  /** Model that Gemini calls use. */
+  model: string;
+  /** Whether a GEMINI_API_KEY exists on the server (never the key itself). */
+  apiKeyConfigured: boolean;
+  /** Whether AI features currently attempt live Gemini calls. */
+  active: boolean;
+  health: AiProviderHealth;
+  /** Human-readable explanation of the current health state. */
+  detail: string;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  lastFailureDetail: string | null;
+  checkedAt: string;
+}
+
+export interface AiProviderTestResult {
+  ok: boolean;
+  model: string;
+  latencyMs: number;
+  provider: AiProviderStatus;
+  error?: string;
+}
+
+/**
  * Resume extraction domain types.
  * Extracted data is always a *draft* — it must be reviewed and explicitly
  * saved by the student, and is never treated as verified evidence.
