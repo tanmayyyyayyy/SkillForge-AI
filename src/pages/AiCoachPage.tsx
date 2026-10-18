@@ -126,7 +126,7 @@ export const AiCoachPage: React.FC = () => {
             fontSize: '0.78rem',
             color: 'var(--text-primary)'
           }}
-          title="SkillForge provides honest transparency regarding whether a live Gemini API key is configured or the internal deterministic engine is running."
+          title="Each reply is labeled with the engine that actually generated it: the live Gemini API when it responds successfully, or the internal deterministic engine as a fallback."
         >
           <Sparkles size={14} color="var(--color-accent)" />
           <span>Engine: <strong style={{ color: 'var(--color-accent)' }}>{currentEngine}</strong></span>

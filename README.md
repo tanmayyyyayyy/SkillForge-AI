@@ -88,7 +88,7 @@ Students face three critical challenges:
 - Score breakdown with per-component analysis
 
 ### 4. AI Career Coach (`server/routes/aiCoach.ts`)
-- **Primary**: Google Gemini 1.5 Flash with full profile context injection
+- **Primary**: Google Gemini Flash (configurable via `GEMINI_MODEL`, default `gemini-3.8-flash`) with full profile context injection
 - **Fallback**: Contextual Deterministic Advisory Engine — functions fully offline
 - Intent classification: detects queries about learning priorities, projects, scheduling, interviews, and blockers
 - Suggested follow-up actions for guided conversations
@@ -183,7 +183,7 @@ Students face three critical challenges:
 | Icons | Lucide React |
 | Backend | Express 5, TypeScript, tsx |
 | Auth | JWT (jsonwebtoken) + bcrypt |
-| AI | Google Gemini 1.5 Flash API |
+| AI | Google Gemini Flash API (model configurable via `GEMINI_MODEL`) |
 | Persistence | JSON File Store |
 | Testing | Vitest |
 | Fonts | Inter, Outfit, JetBrains Mono (Google Fonts) |

@@ -4,9 +4,12 @@ import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.js';
 import { CAREER_ROLES } from '../data/careers.js';
 import { calculateSkillGaps } from '../engine/gapEngine.js';
 import { calculateCareerReadiness } from '../engine/readinessEngine.js';
+import { callGeminiText, geminiEngineLabel, isGeminiConfigured } from '../services/geminiClient.js';
 import { AiCoachMessage } from '../../src/types/index.js';
 
 export const aiCoachRouter = Router();
+
+const DETERMINISTIC_ENGINE = 'Deterministic Advisory Engine';
 
 // Get conversation history
 aiCoachRouter.get('/messages', authMiddleware, (req: AuthenticatedRequest, res: Response): void => {
@@ -37,29 +40,20 @@ aiCoachRouter.post('/chat', authMiddleware, async (req: AuthenticatedRequest, re
     const readiness = calculateCareerReadiness(profile, role, assessments, projects);
     const roadmapTasks = db.getRoadmapTasks(req.userId!);
 
-    // Record user message
-    const userMessage: AiCoachMessage = {
-      id: `msg_u_${Date.now()}`,
-      role: 'user',
-      content: prompt.trim(),
-      timestamp: new Date().toISOString(),
-      engineUsed: process.env.GEMINI_API_KEY ? 'Gemini Pro (Live API)' : 'Deterministic Advisory Engine'
-    };
-
     const userPromptLower = prompt.toLowerCase();
     let replyContent = '';
-    let engineUsed: 'Gemini Pro (Live API)' | 'Deterministic Advisory Engine' = 'Deterministic Advisory Engine';
+    let engineUsed: string = DETERMINISTIC_ENGINE;
     let suggestedActions: string[] = [];
 
-    // Check if live Gemini API key is configured
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey) {
-      try {
-        const topGapsText = gaps.items.filter(i => i.gap > 0).slice(0, 4).map(i => `${i.name} (gap: ${i.gap}, priority: ${i.priorityBadge})`).join(', ');
-        const inProgressTask = roadmapTasks.find(t => t.status === 'in_progress')?.skillName || 'None active';
-        const passedAssessmentsText = assessments.filter(a => a.passed).map(a => a.skillName).join(', ') || 'None yet';
+    // Attempt a live Gemini reply when an API key is configured. Any failure
+    // (HTTP error, timeout, retired model, empty candidate) returns null and
+    // falls through to the deterministic engine — but it is always logged.
+    if (isGeminiConfigured()) {
+      const topGapsText = gaps.items.filter(i => i.gap > 0).slice(0, 4).map(i => `${i.name} (gap: ${i.gap}, priority: ${i.priorityBadge})`).join(', ');
+      const inProgressTask = roadmapTasks.find(t => t.status === 'in_progress')?.skillName || 'None active';
+      const passedAssessmentsText = assessments.filter(a => a.passed).map(a => a.skillName).join(', ') || 'None yet';
 
-        const systemPrompt = `You are the SkillForge AI Career Intelligence Coach. You provide personalized, direct, tactical career advice based on the student's actual profile and real skill gaps.
+      const systemPrompt = `You are the SkillForge AI Career Intelligence Coach. You provide personalized, direct, tactical career advice based on the student's actual profile and real skill gaps.
 Student Profile:
 - Name: ${profile.fullName}
 - Education: ${profile.degree} (${profile.educationLevel}, Class of ${profile.graduationYear})
@@ -76,40 +70,21 @@ Rules:
 2. Use markdown formatting with bullet points and bold headers.
 3. Keep response under 300 words. Never output generic advice; tailor it directly to their specific missing skills and available hours.`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: 'user',
-                parts: [{ text: `${systemPrompt}\n\nStudent question: ${prompt}` }]
-              }
-            ],
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 600
-            }
-          }),
-          signal: AbortSignal.timeout(8000)
-        });
+      const candidateText = await callGeminiText(`${systemPrompt}\n\nStudent question: ${prompt}`, {
+        temperature: 0.7,
+        maxOutputTokens: 600,
+        timeoutMs: 15000
+      });
 
-        if (response.ok) {
-          const data = await response.json() as any;
-          const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (candidateText && candidateText.trim().length > 0) {
-            replyContent = candidateText.trim();
-            engineUsed = 'Gemini Pro (Live API)';
-          }
-        }
-      } catch (geminiError) {
-        console.warn('Gemini API call failed or timed out, falling back to Contextual Deterministic Advisory Engine:', geminiError);
+      if (candidateText) {
+        replyContent = candidateText;
+        engineUsed = geminiEngineLabel();
       }
     }
 
     // Contextual Deterministic Advisory Engine (Robust, reliable fallback)
     if (!replyContent) {
-      engineUsed = 'Deterministic Advisory Engine';
+      engineUsed = DETERMINISTIC_ENGINE;
       const criticalGaps = gaps.items.filter(i => i.priorityBadge === 'Critical' || i.priorityBadge === 'High');
       const topGap = criticalGaps[0] || gaps.items[0];
       const verifiedCount = assessments.filter(a => a.passed).length;
@@ -226,6 +201,16 @@ Feel free to ask me any of the following to accelerate your progress:
         ];
       }
     }
+
+    // The stored user turn records the engine that actually produced this
+    // reply — never "Gemini" just because a key happens to be configured.
+    const userMessage: AiCoachMessage = {
+      id: `msg_u_${Date.now()}`,
+      role: 'user',
+      content: prompt.trim(),
+      timestamp: new Date().toISOString(),
+      engineUsed
+    };
 
     const assistantMessage: AiCoachMessage = {
       id: `msg_a_${Date.now()}`,

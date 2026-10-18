@@ -411,7 +411,8 @@ export interface AiCoachMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
-  engineUsed: 'Gemini Pro (Live API)' | 'Deterministic Advisory Engine';
+  /** Engine that produced this message, as reported by the server: e.g. "Gemini gemini-3.8-flash (Live API)" or "Deterministic Advisory Engine". */
+  engineUsed: string;
   suggestedActions?: string[];
 }
 

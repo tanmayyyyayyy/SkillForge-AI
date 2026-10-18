@@ -1,5 +1,6 @@
 import { validateResumeExtraction } from '../../src/utils/resumeSchema.js';
 import { validateJobDescriptionExtraction } from '../../src/utils/jobDescriptionSchema.js';
+import { callGeminiText } from './geminiClient.js';
 import type { ResumeExtraction, JobDescriptionExtraction } from '../../src/types/index.js';
 
 /**
@@ -11,9 +12,7 @@ import type { ResumeExtraction, JobDescriptionExtraction } from '../../src/types
  * - Returns null on any failure so the caller can use the deterministic fallback.
  */
 
-export function isGeminiConfigured(): boolean {
-  return !!process.env.GEMINI_API_KEY;
-}
+export { isGeminiConfigured } from './geminiClient.js';
 
 const EXTRACTION_PROMPT = `You are a resume parsing engine. Extract structured data from the resume text below.
 Return ONLY valid minified JSON with this exact shape:
@@ -52,56 +51,19 @@ function safeParseJson(raw: string): unknown {
 const REQUEST_TIMEOUT_MS = 20000;
 const MAX_ATTEMPTS = 2;
 
-/**
- * Bounded-retry Gemini call. Returns the raw candidate text, or null when the
- * provider is unavailable, times out, or returns something unusable.
- * Never logs the prompt contents (privacy).
- */
-async function callGemini(prompt: string): Promise<string | null> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0,
-              maxOutputTokens: 4096,
-              responseMimeType: 'application/json'
-            }
-          }),
-          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
-        }
-      );
-
-      if (!response.ok) {
-        if (attempt === MAX_ATTEMPTS) return null;
-        continue;
-      }
-
-      const data = (await response.json()) as any;
-      const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (typeof candidateText === 'string' && candidateText.trim()) {
-        return candidateText;
-      }
-      if (attempt === MAX_ATTEMPTS) return null;
-    } catch {
-      if (attempt === MAX_ATTEMPTS) return null;
-    }
-  }
-  return null;
-}
+const EXTRACTION_CALL_OPTIONS = {
+  temperature: 0,
+  maxOutputTokens: 4096,
+  responseMimeType: 'application/json',
+  timeoutMs: REQUEST_TIMEOUT_MS,
+  maxAttempts: MAX_ATTEMPTS
+} as const;
 
 export async function extractWithGemini(text: string): Promise<{ extraction: ResumeExtraction; warnings: string[] } | null> {
   // Keep the payload bounded to control cost and latency.
-  const candidateText = await callGemini(
-    `${EXTRACTION_PROMPT}\n\n--- RESUME TEXT START ---\n${text.slice(0, 20000)}\n--- RESUME TEXT END ---`
+  const candidateText = await callGeminiText(
+    `${EXTRACTION_PROMPT}\n\n--- RESUME TEXT START ---\n${text.slice(0, 20000)}\n--- RESUME TEXT END ---`,
+    EXTRACTION_CALL_OPTIONS
   );
   if (!candidateText) return null;
 
@@ -146,8 +108,9 @@ STRICT RULES:
 export async function extractJobDescriptionWithGemini(
   text: string
 ): Promise<{ extraction: JobDescriptionExtraction; warnings: string[] } | null> {
-  const candidateText = await callGemini(
-    `${JOB_EXTRACTION_PROMPT}\n\n--- JOB DESCRIPTION START ---\n${text.slice(0, 20000)}\n--- JOB DESCRIPTION END ---`
+  const candidateText = await callGeminiText(
+    `${JOB_EXTRACTION_PROMPT}\n\n--- JOB DESCRIPTION START ---\n${text.slice(0, 20000)}\n--- JOB DESCRIPTION END ---`,
+    EXTRACTION_CALL_OPTIONS
   );
   if (!candidateText) return null;
 
