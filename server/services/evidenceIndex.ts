@@ -62,6 +62,33 @@ export function buildEvidenceIndex(userId: string): Map<string, CareerTwinEviden
     }
   }
 
+  for (const proof of db.getProofOfSkillEvidence(userId)) {
+    add([normalizeSkillKey(proof.skillId), normalizeSkillKey(proof.skillName)], {
+      kind: 'assessment',
+      id: proof.challengeId,
+      label: `Proof of Skill: ${proof.challengeTitle}`,
+      detail: `Verified by automated tests — ${proof.scorePercentage}% (${proof.passedTests}/${proof.totalTests} passed)`,
+      url: '/proof-of-skill'
+    });
+  }
+
+  for (const forged of db.getForgedProjects(userId)) {
+    if (forged.status === 'planned') continue;
+    const completedMilestones = forged.milestones.filter(m => m.completed).length;
+    const detail = forged.status === 'completed'
+      ? 'Completed engineering project'
+      : `In progress (${completedMilestones}/${forged.milestones.length} milestones complete)`;
+    for (const skill of forged.targetedGapSkills) {
+      add([normalizeSkillKey(skill)], {
+        kind: 'project',
+        id: forged.id,
+        label: `Forged Project: ${forged.title}`,
+        detail,
+        url: '/project-forge'
+      });
+    }
+  }
+
   return index;
 }
 

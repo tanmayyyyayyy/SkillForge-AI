@@ -326,3 +326,251 @@ export function simulateScenarios(
     generatedAt: new Date().toISOString()
   };
 }
+
+/**
+ * Career Twin Evolution: Multi-scenario comparative forecasting.
+ *
+ * Evaluates 5 explicit career scenarios (Current learning pace, Focused gap-closure,
+ * Internship preparation, Technical interview preparation, and Project sprint)
+ * using deterministic effort calculations and real profile evidence.
+ */
+export function evolveCareerTwinScenarios(userId: string): import('../../src/types/index.js').CareerTwinEvolutionData | null {
+  const profile = db.getProfile(userId);
+  if (!profile) return null;
+
+  const role = CAREER_ROLES.find(r => r.id === profile.targetRole) || CAREER_ROLES[0];
+  const assessments = db.getAssessments(userId);
+  const projects = db.getProjects(userId);
+  const gaps = calculateSkillGaps(profile, role);
+  const baseReadiness = calculateCareerReadiness(profile, role, assessments, projects, 0).overallScore;
+
+  const weeklyHours = Math.max(5, profile.weeklyHours || 14);
+  const criticalGaps = gaps.items.filter(g => g.gap > 0).sort((a, b) => b.importance - a.importance);
+
+  const makeDate = (weeksFromNow: number): string => {
+    const d = new Date();
+    d.setDate(d.getDate() + Math.round(weeksFromNow * 7));
+    return d.toISOString().split('T')[0];
+  };
+
+  // 1. Current Pace
+  const currentTotalHours = criticalGaps.reduce((sum, g) => sum + g.estimatedLearningHours, 0);
+  const currentWeeks = Math.max(2, Math.round(currentTotalHours / weeklyHours));
+  let currentCumHours = 0;
+  const currentMilestones = criticalGaps.slice(0, 4).map((g, idx) => {
+    currentCumHours += g.estimatedLearningHours;
+    return {
+      milestoneName: `Complete ${g.name} Curriculum`,
+      targetSkill: g.name,
+      expectedCompletionDate: makeDate(currentCumHours / weeklyHours),
+      requiredHours: g.estimatedLearningHours,
+      dependencies: idx === 0 ? [] : [criticalGaps[idx - 1].name]
+    };
+  });
+
+  const scenarioCurrent: import('../../src/types/index.js').CareerScenarioForecast = {
+    scenarioId: 'current_pace',
+    label: 'Current Learning Pace',
+    description: `Maintaining your current study allocation of ${weeklyHours} hrs/week across all roadmap milestones evenly.`,
+    weeklyStudyHours: weeklyHours,
+    estimatedWeeksToReadiness: currentWeeks,
+    projectedReadinessScore: Math.min(95, baseReadiness + Math.round(criticalGaps.length * 4)),
+    projectedReadinessDelta: Math.min(30, Math.round(criticalGaps.length * 4)),
+    milestoneForecasts: currentMilestones,
+    assumptions: [
+      `Assumes consistent ${weeklyHours} hours/week of focused study`,
+      'Milestones are worked sequentially without interruption'
+    ],
+    riskFactors: [
+      'Even distribution may delay closing critical blocker skills needed for technical interviews',
+      'Context switching across multiple topics simultaneously'
+    ],
+    alternativePaths: ['Accelerate critical gaps first to qualify for early applicant pools'],
+    confidenceLevel: 'High'
+  };
+
+  // 2. Focused Skill-Gap Improvement
+  const focusedGaps = criticalGaps.slice(0, 2);
+  const focusedHours = focusedGaps.reduce((sum, g) => sum + g.estimatedLearningHours, 0);
+  const focusedWeeks = Math.max(2, Math.round(focusedHours / (weeklyHours * 0.8)));
+  let focusedCumHours = 0;
+  const focusedMilestones = focusedGaps.map(g => {
+    focusedCumHours += g.estimatedLearningHours;
+    return {
+      milestoneName: `Pass ${g.name} Practical Proof Challenge`,
+      targetSkill: g.name,
+      expectedCompletionDate: makeDate(focusedCumHours / (weeklyHours * 0.8)),
+      requiredHours: g.estimatedLearningHours,
+      dependencies: []
+    };
+  });
+
+  const scenarioFocused: import('../../src/types/index.js').CareerScenarioForecast = {
+    scenarioId: 'skill_gap_focused',
+    label: 'Focused Skill-Gap Closure',
+    description: `Dedicates 80% of your weekly time strictly to your top 2 blocking skills: ${focusedGaps.map(g => g.name).join(' & ') || 'Core competencies'}.`,
+    weeklyStudyHours: weeklyHours,
+    estimatedWeeksToReadiness: focusedWeeks,
+    projectedReadinessScore: Math.min(95, baseReadiness + 18),
+    projectedReadinessDelta: 18,
+    milestoneForecasts: focusedMilestones,
+    assumptions: [
+      'Concentrated effort yields faster concept retention and mastery',
+      'Secondary non-essential topics are temporarily deferred'
+    ],
+    riskFactors: [
+      'High cognitive fatigue if tackling two complex theoretical topics simultaneously'
+    ],
+    alternativePaths: ['Pair theoretical study with hands-on challenge drills in Proof of Skill'],
+    confidenceLevel: 'High'
+  };
+
+  // 3. Internship Preparation Sprint
+  const internWeeks = 8;
+  const internMilestones = [
+    {
+      milestoneName: 'Core Algorithms & Data Structures Proof',
+      targetSkill: 'Data Structures & Algorithms',
+      expectedCompletionDate: makeDate(2),
+      requiredHours: weeklyHours * 2,
+      dependencies: []
+    },
+    {
+      milestoneName: 'Portfolio Project MVP Deliverable',
+      targetSkill: 'Practical Systems Engineering',
+      expectedCompletionDate: makeDate(5),
+      requiredHours: weeklyHours * 3,
+      dependencies: ['Algorithms Foundation']
+    },
+    {
+      milestoneName: 'Resume Defense & Technical Mock Screening',
+      targetSkill: 'Interview Communication',
+      expectedCompletionDate: makeDate(8),
+      requiredHours: weeklyHours * 3,
+      dependencies: ['Portfolio Project MVP']
+    }
+  ];
+
+  const scenarioInternship: import('../../src/types/index.js').CareerScenarioForecast = {
+    scenarioId: 'internship_prep',
+    label: 'Internship Preparation Sprint',
+    description: 'An aggressive 8-week milestone path targeted at passing technical screening rounds and establishing practical project proof.',
+    weeklyStudyHours: Math.max(16, weeklyHours),
+    estimatedWeeksToReadiness: 8,
+    projectedReadinessScore: Math.min(95, baseReadiness + 22),
+    projectedReadinessDelta: 22,
+    milestoneForecasts: internMilestones,
+    assumptions: [
+      'Recruiting cycle deadlines require verifiable portfolio proof by Week 6',
+      'Time allocation increases to at least 16 hours/week'
+    ],
+    riskFactors: [
+      'Requires strict adherence to schedule; incomplete milestones leave gaps in interview prep'
+    ],
+    alternativePaths: ['Extend timeline to 12 weeks if academic workload intensifies'],
+    confidenceLevel: 'Moderate'
+  };
+
+  // 4. Technical Interview Preparation
+  const interviewWeeks = 6;
+  const interviewMilestones = [
+    {
+      milestoneName: 'System Architecture & Concurrency Drills',
+      targetSkill: 'System Design',
+      expectedCompletionDate: makeDate(2),
+      requiredHours: weeklyHours * 2,
+      dependencies: []
+    },
+    {
+      milestoneName: 'Live Coding Challenge Rapid-Fire',
+      targetSkill: 'Live Coding & Problem Solving',
+      expectedCompletionDate: makeDate(4),
+      requiredHours: weeklyHours * 2,
+      dependencies: ['System Design']
+    },
+    {
+      milestoneName: 'Behavioral STAR Story Formulation',
+      targetSkill: 'Behavioral Competence',
+      expectedCompletionDate: makeDate(6),
+      requiredHours: weeklyHours * 2,
+      dependencies: []
+    }
+  ];
+
+  const scenarioInterview: import('../../src/types/index.js').CareerScenarioForecast = {
+    scenarioId: 'interview_prep',
+    label: 'Technical Interview Defense',
+    description: 'Prioritizes verbal explanation, architectural trade-offs, and live coding fluency in Interview Arena.',
+    weeklyStudyHours: weeklyHours,
+    estimatedWeeksToReadiness: interviewWeeks,
+    projectedReadinessScore: Math.min(95, baseReadiness + 15),
+    projectedReadinessDelta: 15,
+    milestoneForecasts: interviewMilestones,
+    assumptions: [
+      'Foundational syntax is already acquired; focus is on live delivery and trade-off defense'
+    ],
+    riskFactors: [
+      'Does not produce new external GitHub projects; strictly sharpens test performance'
+    ],
+    alternativePaths: ['Conduct mock interviews twice weekly in Interview Arena'],
+    confidenceLevel: 'High'
+  };
+
+  // 5. Project-Focused Sprint
+  const projectWeeks = 10;
+  const projectMilestones = [
+    {
+      milestoneName: 'Project Forge: Architecture & Persistence Spec',
+      targetSkill: 'Architecture Design',
+      expectedCompletionDate: makeDate(3),
+      requiredHours: weeklyHours * 3,
+      dependencies: []
+    },
+    {
+      milestoneName: 'Project Forge: High-Concurrency Core Implementation',
+      targetSkill: 'Backend & Data Pipelines',
+      expectedCompletionDate: makeDate(7),
+      requiredHours: weeklyHours * 4,
+      dependencies: ['Architecture Spec']
+    },
+    {
+      milestoneName: 'Portfolio Intelligence: Verified Testing & Public Demo',
+      targetSkill: 'DevOps & Quality Assurance',
+      expectedCompletionDate: makeDate(10),
+      requiredHours: weeklyHours * 3,
+      dependencies: ['Core Implementation']
+    }
+  ];
+
+  const scenarioProject: import('../../src/types/index.js').CareerScenarioForecast = {
+    scenarioId: 'project_sprint',
+    label: 'Project-Focused Development Sprint',
+    description: 'Immerses 100% of study time into building an industry-grade project in Project Forge to substantiate your resume with verifiable artifacts.',
+    weeklyStudyHours: weeklyHours,
+    estimatedWeeksToReadiness: projectWeeks,
+    projectedReadinessScore: Math.min(95, baseReadiness + 25),
+    projectedReadinessDelta: 25,
+    milestoneForecasts: projectMilestones,
+    assumptions: [
+      'Practical engineering artifacts provide the strongest signal for technical hiring managers',
+      'Theoretical learning is acquired contextually while solving real build errors'
+    ],
+    riskFactors: [
+      'Debugging complex architectural issues can cause timeline variance'
+    ],
+    alternativePaths: ['Break down larger milestones into sub-tasks in Project Forge'],
+    confidenceLevel: 'Moderate'
+  };
+
+  const scenarios = [scenarioCurrent, scenarioFocused, scenarioInternship, scenarioInterview, scenarioProject];
+
+  return {
+    baseReadiness,
+    targetRole: { id: role.id, title: role.title },
+    scenarios,
+    recommendedScenario: 'skill_gap_focused',
+    comparisonSummary: `Comparing 5 scenarios against your ${weeklyHours} hrs/week availability. The "Focused Skill-Gap Closure" scenario offers the highest efficiency gain (+18 readiness points in ${focusedWeeks} weeks) by addressing top blocker skills first.`,
+    disclaimer: 'All scenario dates and readiness changes are deterministic mathematical estimates derived from your personal profile and historical activity. SkillForge does not guarantee employment outcomes.',
+    generatedAt: new Date().toISOString()
+  };
+}

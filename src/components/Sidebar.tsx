@@ -21,7 +21,12 @@ import {
   Fingerprint,
   ShieldCheck,
   Network,
-  TrendingUp
+  TrendingUp,
+  Radio,
+  Briefcase,
+  Hammer,
+  Rocket,
+  GraduationCap
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -29,25 +34,57 @@ export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
-  const navItems = [
-    { to: '/dashboard', label: 'Main Dashboard', icon: LayoutDashboard },
-    { to: '/career-twin', label: 'Career Twin', icon: Fingerprint },
-    { to: '/war-room', label: 'Career War Room', icon: Swords },
-    { to: '/resume-truth', label: 'Resume Truth Engine', icon: ShieldCheck },
-    { to: '/evidence-graph', label: 'Career Evidence Graph', icon: Network },
-    { to: '/trajectory', label: 'Trajectory Simulator', icon: TrendingUp },
-    { to: '/profile', label: 'Student Profile', icon: User },
-    { to: '/careers', label: 'Career Selection', icon: Compass },
-    { to: '/analysis', label: 'Skill Gap Analysis', icon: GitCompare },
-    { to: '/jd-analyzer', label: 'Job Description Analyzer', icon: FileSearch },
-    { to: '/roadmap', label: 'Learning Roadmap', icon: Milestone },
-    { to: '/weekly-planner', label: 'Weekly Planner', icon: CalendarDays },
-    { to: '/ai-coach', label: 'AI Career Coach', icon: Bot },
-    { to: '/projects', label: 'Project Portfolio', icon: FolderGit2 },
-    { to: '/assessments', label: 'Skill Verification', icon: Award },
-    { to: '/analytics', label: 'Progress Analytics', icon: BarChart3 },
-    { to: '/report', label: 'Readiness Report', icon: FileText },
-    { to: '/settings', label: 'Settings', icon: Settings },
+  const navSections = [
+    {
+      title: 'Overview',
+      items: [
+        { to: '/dashboard', label: 'Main Dashboard', icon: LayoutDashboard },
+        { to: '/profile', label: 'Student Profile', icon: User },
+      ]
+    },
+    {
+      title: 'Career Intelligence',
+      items: [
+        { to: '/skill-radar', label: 'SkillForge Radar', icon: Radio },
+        { to: '/opportunity-match', label: 'Opportunity Match', icon: Briefcase },
+        { to: '/analysis', label: 'Skill Gap Analysis', icon: GitCompare },
+        { to: '/jd-analyzer', label: 'Job Description Analyzer', icon: FileSearch },
+      ]
+    },
+    {
+      title: 'Skill Development',
+      items: [
+        { to: '/proof-of-skill', label: 'Proof of Skill', icon: Award },
+        { to: '/project-forge', label: 'Project Forge', icon: Hammer },
+        { to: '/interview-arena', label: 'Interview Arena', icon: Swords },
+        { to: '/roadmap', label: 'Learning Roadmap', icon: Milestone },
+        { to: '/assessments', label: 'Skill Verification', icon: GraduationCap },
+        { to: '/projects', label: 'Project Portfolio', icon: FolderGit2 },
+      ]
+    },
+    {
+      title: 'Career Operations',
+      items: [
+        { to: '/mission-control', label: 'Career Mission Control', icon: Rocket },
+        { to: '/career-twin', label: 'Career Twin', icon: Fingerprint },
+        { to: '/war-room', label: 'Career War Room', icon: Compass },
+        { to: '/trajectory', label: 'Trajectory Simulator', icon: TrendingUp },
+        { to: '/ai-coach', label: 'AI Career Coach', icon: Bot },
+        { to: '/weekly-planner', label: 'Weekly Planner', icon: CalendarDays },
+      ]
+    },
+    {
+      title: 'Evidence & Portfolio',
+      items: [
+        { to: '/portfolio-intelligence', label: 'Portfolio Intelligence', icon: FolderGit2 },
+        { to: '/evidence-graph', label: 'Career Evidence Graph', icon: Network },
+        { to: '/resume-truth', label: 'Resume Truth Engine', icon: ShieldCheck },
+        { to: '/careers', label: 'Career Selection', icon: Compass },
+        { to: '/report', label: 'Readiness Report', icon: FileText },
+        { to: '/analytics', label: 'Progress Analytics', icon: BarChart3 },
+        { to: '/settings', label: 'Settings', icon: Settings },
+      ]
+    }
   ];
 
   return (
@@ -135,43 +172,59 @@ export const Sidebar: React.FC = () => {
         aria-label="Primary"
         style={{
           flex: 1,
-          padding: '1rem 0.75rem',
+          padding: '0.75rem 0.75rem',
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.25rem',
+          gap: '0.2rem',
           overflowY: 'auto'
         }}
       >
-        {navItems.map(item => {
-          const Icon = item.icon;
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              style={({ isActive }) => ({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                padding: '0.6rem 0.85rem',
-                borderRadius: 'var(--radius-md)',
-                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                background: isActive ? 'rgba(211, 138, 25, 0.14)' : 'transparent',
-                borderLeft: isActive ? '3px solid var(--color-accent)' : '3px solid transparent',
-                fontSize: '0.9rem',
-                fontWeight: isActive ? 700 : 500,
-                transition: 'all var(--transition-fast)'
-              })}
+        {navSections.map(section => (
+          <div key={section.title} style={{ marginBottom: '0.4rem' }}>
+            <div
+              style={{
+                fontSize: '0.66rem',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.07em',
+                color: 'var(--text-muted)',
+                padding: '0.4rem 0.75rem 0.2rem'
+              }}
             >
-              {({ isActive }) => (
-                <>
-                  <Icon size={18} color={isActive ? 'var(--color-accent)' : 'inherit'} />
-                  <span style={{ flex: 1 }}>{item.label}</span>
-                  <ChevronRight size={13} style={{ opacity: 0.35 }} />
-                </>
-              )}
-            </NavLink>
-          );
-        })}
+              {section.title}
+            </div>
+            {section.items.map(item => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  style={({ isActive }) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.55rem 0.85rem',
+                    borderRadius: 'var(--radius-md)',
+                    color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    background: isActive ? 'rgba(211, 138, 25, 0.14)' : 'transparent',
+                    borderLeft: isActive ? '3px solid var(--color-accent)' : '3px solid transparent',
+                    fontSize: '0.86rem',
+                    fontWeight: isActive ? 700 : 500,
+                    transition: 'all var(--transition-fast)'
+                  })}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <Icon size={17} color={isActive ? 'var(--color-accent)' : 'inherit'} />
+                      <span style={{ flex: 1 }}>{item.label}</span>
+                      <ChevronRight size={12} style={{ opacity: 0.35 }} />
+                    </>
+                  )}
+                </NavLink>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* User Footer Profile Card */}

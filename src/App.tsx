@@ -31,6 +31,13 @@ const WarRoomPage = React.lazy(() => import('./pages/WarRoomPage.js').then(m => 
 const ResumeTruthPage = React.lazy(() => import('./pages/ResumeTruthPage.js').then(m => ({ default: m.ResumeTruthPage })));
 const EvidenceGraphPage = React.lazy(() => import('./pages/EvidenceGraphPage.js').then(m => ({ default: m.EvidenceGraphPage })));
 const TrajectorySimulatorPage = React.lazy(() => import('./pages/TrajectorySimulatorPage.js').then(m => ({ default: m.TrajectorySimulatorPage })));
+const SkillRadarPage = React.lazy(() => import('./pages/SkillRadarPage.js').then(m => ({ default: m.SkillRadarPage })));
+const ProofOfSkillPage = React.lazy(() => import('./pages/ProofOfSkillPage.js').then(m => ({ default: m.ProofOfSkillPage })));
+const MissionControlPage = React.lazy(() => import('./pages/MissionControlPage.js').then(m => ({ default: m.MissionControlPage })));
+const InterviewArenaPage = React.lazy(() => import('./pages/InterviewArenaPage.js').then(m => ({ default: m.InterviewArenaPage })));
+const ProjectForgePage = React.lazy(() => import('./pages/ProjectForgePage.js').then(m => ({ default: m.ProjectForgePage })));
+const OpportunityMatchPage = React.lazy(() => import('./pages/OpportunityMatchPage.js').then(m => ({ default: m.OpportunityMatchPage })));
+const PortfolioIntelligencePage = React.lazy(() => import('./pages/PortfolioIntelligencePage.js').then(m => ({ default: m.PortfolioIntelligencePage })));
 
 const PageLoader: React.FC = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -263,6 +270,83 @@ const AppRoutes: React.FC = () => {
             <ProtectedRoute>
               <AppLayout>
                 <ReadinessReportPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/skill-radar"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <SkillRadarPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/proof-of-skill"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ProofOfSkillPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/mission-control"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <MissionControlPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/interview-arena"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <InterviewArenaPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/project-forge"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ProjectForgePage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/opportunity-match"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <OpportunityMatchPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/portfolio-intelligence"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <PortfolioIntelligencePage />
               </AppLayout>
             </ProtectedRoute>
           }

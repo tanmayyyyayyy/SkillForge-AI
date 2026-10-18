@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.js';
-import { buildCareerTwin, simulateScenarios } from '../services/careerTwinService.js';
+import { buildCareerTwin, simulateScenarios, evolveCareerTwinScenarios } from '../services/careerTwinService.js';
 import type { CareerTwinScenarioInput } from '../../src/types/index.js';
 
 export const careerTwinRouter = Router();
@@ -60,6 +60,21 @@ careerTwinRouter.get('/', authMiddleware, (req: AuthenticatedRequest, res: Respo
   } catch (err) {
     console.error('Error building career twin:', err);
     res.status(500).json({ error: 'Failed to build your career twin.' });
+  }
+});
+
+// Career Twin Evolution: Multi-scenario comparative forecasting
+careerTwinRouter.get('/evolution', authMiddleware, (req: AuthenticatedRequest, res: Response): void => {
+  try {
+    const evolution = evolveCareerTwinScenarios(req.userId!);
+    if (!evolution) {
+      res.status(404).json({ error: 'Profile not found to compute career evolution scenarios.' });
+      return;
+    }
+    res.json({ evolution });
+  } catch (err) {
+    console.error('Error computing career twin evolution:', err);
+    res.status(500).json({ error: 'Failed to compute career evolution.' });
   }
 });
 

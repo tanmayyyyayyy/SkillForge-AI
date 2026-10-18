@@ -1239,5 +1239,536 @@ export interface TrajectorySimulation {
   disclaimer: string;
 }
 
+/* ============================================================================
+ * Integrated Feature 1 — SkillForge Radar
+ * ========================================================================== */
+
+export interface SkillDemandItem {
+  skillId: string;
+  name: string;
+  category: string;
+  frequency: number;
+  percentageOfSample: number;
+  requiredCount: number;
+  preferredCount: number;
+  supportingJobTitles: string[];
+}
+
+export interface SkillCooccurrence {
+  skillA: string;
+  skillB: string;
+  cooccurrenceCount: number;
+}
+
+export interface SkillPrioritizationItem {
+  skillId: string;
+  name: string;
+  category: string;
+  priorityScore: number;
+  importanceTier: 'Critical' | 'High' | 'Medium' | 'Foundational';
+  marketDemandRank: number;
+  currentEvidenceStatus: SkillVerificationStatus;
+  userProficiency: ProficiencyLevel;
+  targetProficiency: ProficiencyLevel;
+  gap: number;
+  estimatedHours: number;
+  dependencies: string[];
+  whyItMatters: string;
+  supportingJobCount: number;
+  currentEvidenceNotes: string;
+  recommendedNextAction: {
+    actionType: 'proof_of_skill' | 'project_forge' | 'roadmap_task' | 'interview_prep';
+    label: string;
+    route: string;
+  };
+}
+
+export interface SkillRadarData {
+  targetRole: { id: string; title: string };
+  sampleSize: number;
+  sampleSources: Array<{ id: string; title: string; company?: string }>;
+  frequentlyRequestedSkills: SkillDemandItem[];
+  cooccurrences: SkillCooccurrence[];
+  prioritizedSkills: SkillPrioritizationItem[];
+  generatedAt: string;
+  dataIntegrityNotice: string;
+}
+
+/* ============================================================================
+ * Integrated Feature 2 — Proof of Skill (Practical Challenges)
+ * ========================================================================== */
+
+export type ChallengeType =
+  | 'algorithmic_code'
+  | 'sql_query'
+  | 'api_design'
+  | 'debugging'
+  | 'unit_testing'
+  | 'ml_pipeline';
+
+export interface ProofOfSkillTestCase {
+  id: string;
+  description: string;
+  inputDescription: string;
+  expectedOutput: string;
+  isHidden?: boolean;
+}
+
+export interface ProofOfSkillChallenge {
+  id: string;
+  title: string;
+  description: string;
+  targetSkillId: string;
+  targetSkillName: string;
+  category: string;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+  type: ChallengeType;
+  instructions: string;
+  constraints: string[];
+  starterCode?: string;
+  timeEstimateMinutes: number;
+  submissionFormat: string;
+  evaluationCriteria: string[];
+  maxScore: number;
+  passingScorePercentage: number;
+  testCases: ProofOfSkillTestCase[];
+  explanation: string;
+}
+
+export interface ProofOfSkillSubmission {
+  challengeId: string;
+  solution: string;
+  language?: string;
+  notes?: string;
+}
+
+export interface TestCaseResult {
+  testCaseId: string;
+  description: string;
+  passed: boolean;
+  expected: string;
+  actual: string;
+  executionTimeMs: number;
+  error?: string;
+}
+
+export interface ProofOfSkillEvaluationResult {
+  challengeId: string;
+  score: number;
+  maxScore: number;
+  scorePercentage: number;
+  passed: boolean;
+  evaluationMethod: 'automated_test_runner' | 'syntax_and_schema_validator' | 'static_assertion';
+  testResults: TestCaseResult[];
+  explanation: string;
+  syntaxValid: boolean;
+  runtimeErrors?: string[];
+  evidenceRecord?: ProofOfSkillEvidenceRecord;
+}
+
+export interface ProofOfSkillEvidenceRecord {
+  id: string;
+  userId: string;
+  skillId: string;
+  skillName: string;
+  challengeId: string;
+  challengeTitle: string;
+  score: number;
+  maxScore: number;
+  scorePercentage: number;
+  evaluationMethod: string;
+  evidenceStatus: 'verified_automated_test' | 'assessed' | 'submitted';
+  completedAt: string;
+  passedTests: number;
+  totalTests: number;
+  timeSpentSeconds?: number;
+}
+
+/* ============================================================================
+ * Integrated Feature 3 — Career Mission Control
+ * ========================================================================== */
+
+export type MissionActionState =
+  | 'suggested'
+  | 'approved'
+  | 'in_progress'
+  | 'completed'
+  | 'blocked'
+  | 'cancelled';
+
+export interface MissionControlAction {
+  id: string;
+  title: string;
+  description: string;
+  kind: 'proof_of_skill' | 'project_milestone' | 'interview_practice' | 'roadmap_learning';
+  priority: 'Critical' | 'High' | 'Medium' | 'Low';
+  priorityScore: number;
+  state: MissionActionState;
+  targetSkillId?: string;
+  targetSkillName?: string;
+  route: string;
+  actionLabel: string;
+  estimatedMinutes: number;
+  reasons: string[];
+  completionCondition: string;
+  sourceEntityId?: string;
+  blockedReason?: string;
+  updatedAt: string;
+}
+
+export interface MissionControlDecision {
+  id: string;
+  userId: string;
+  decisionType: 'goal_change' | 'action_approval' | 'roadmap_adjustment' | 'action_rejection';
+  title: string;
+  rationale: string;
+  timestamp: string;
+  approvedByUser: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CareerMissionControlSummary {
+  userId: string;
+  careerObjective: {
+    roleId: string;
+    roleTitle: string;
+    targetReadiness: number;
+    currentReadiness: number;
+    targetCompanies: string[];
+  };
+  activeMilestone: {
+    title: string;
+    progressPercentage: number;
+    dueDate?: string;
+  } | null;
+  topActionablePriorities: MissionControlAction[];
+  blockedTasks: MissionControlAction[];
+  completedTasks: MissionControlAction[];
+  recentEvidence: Array<{
+    id: string;
+    label: string;
+    type: string;
+    timestamp: string;
+  }>;
+  recommendedNextAction: MissionControlAction | null;
+  recommendationReason: string;
+  decisionAuditTrail: MissionControlDecision[];
+  generatedAt: string;
+}
+
+/* ============================================================================
+ * Integrated Feature 4 — Interview Arena
+ * ========================================================================== */
+
+export type InterviewMode =
+  | 'technical'
+  | 'project_deep_dive'
+  | 'system_design'
+  | 'behavioral'
+  | 'resume_defense'
+  | 'rapid_fire';
+
+export interface InterviewQuestionRubric {
+  correctnessWeight: number;
+  reasoningWeight: number;
+  clarityWeight: number;
+  technicalDepthWeight: number;
+  tradeOffWeight: number;
+  expectedKeyPoints: string[];
+}
+
+export interface InterviewQuestion {
+  id: string;
+  order: number;
+  category: string;
+  question: string;
+  context?: string;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+  rubric: InterviewQuestionRubric;
+  targetSkillId?: string;
+  targetSkillName?: string;
+  basedOnEvidenceRef?: string;
+}
+
+export interface InterviewAnswerEvaluation {
+  questionId: string;
+  userAnswer: string;
+  scoreOutOf10: number;
+  criterionScores: {
+    correctness: number;
+    reasoning: number;
+    clarity: number;
+    technicalDepth: number;
+    tradeOffs: number;
+  };
+  qualitativeFeedback: string;
+  strengthsIdentified: string[];
+  gapsIdentified: string[];
+  suggestedImprovement: string;
+  evaluatedBy: 'gemini' | 'deterministic_rubric';
+  answeredAt: string;
+}
+
+export interface InterviewScorecard {
+  sessionId: string;
+  userId: string;
+  targetRole: string;
+  mode: InterviewMode;
+  totalQuestions: number;
+  answeredQuestions: number;
+  averageScoreOutOf10: number;
+  percentageScore: number;
+  evaluationBreakdown: InterviewAnswerEvaluation[];
+  topStrengths: string[];
+  criticalGaps: string[];
+  recommendedRoadmapActions: Array<{
+    skillId: string;
+    skillName: string;
+    recommendation: string;
+    route: string;
+  }>;
+  completedAt: string;
+  disclaimer: string;
+}
+
+export interface InterviewSession {
+  id: string;
+  userId: string;
+  targetRole: string;
+  mode: InterviewMode;
+  status: 'in_progress' | 'completed' | 'abandoned';
+  questions: InterviewQuestion[];
+  currentQuestionIndex: number;
+  evaluations: InterviewAnswerEvaluation[];
+  scorecard?: InterviewScorecard;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/* ============================================================================
+ * Integrated Feature 5 — Career Twin Evolution
+ * ========================================================================== */
+
+export interface CareerScenarioForecast {
+  scenarioId: 'current_pace' | 'skill_gap_focused' | 'internship_prep' | 'interview_prep' | 'project_sprint';
+  label: string;
+  description: string;
+  weeklyStudyHours: number;
+  estimatedWeeksToReadiness: number;
+  projectedReadinessScore: number;
+  projectedReadinessDelta: number;
+  milestoneForecasts: Array<{
+    milestoneName: string;
+    targetSkill: string;
+    expectedCompletionDate: string;
+    requiredHours: number;
+    dependencies: string[];
+  }>;
+  assumptions: string[];
+  riskFactors: string[];
+  alternativePaths: string[];
+  confidenceLevel: 'High' | 'Moderate' | 'Exploratory';
+}
+
+export interface CareerTwinEvolutionData {
+  baseReadiness: number;
+  targetRole: { id: string; title: string };
+  scenarios: CareerScenarioForecast[];
+  recommendedScenario: 'current_pace' | 'skill_gap_focused' | 'internship_prep' | 'interview_prep' | 'project_sprint';
+  comparisonSummary: string;
+  disclaimer: string;
+  generatedAt: string;
+}
+
+/* ============================================================================
+ * Integrated Feature 6 — Project Forge
+ * ========================================================================== */
+
+export interface ForgedProjectTask {
+  id: string;
+  title: string;
+  description: string;
+  estimatedHours: number;
+  completed: boolean;
+}
+
+export interface ForgedProjectMilestone {
+  id: string;
+  order: number;
+  title: string;
+  objective: string;
+  tasks: ForgedProjectTask[];
+  acceptanceCriteria: string[];
+  skillsDemonstrated: string[];
+  estimatedHours: number;
+  requiredDependencies: string[];
+  expectedEvidence: string;
+  completed: boolean;
+  completedAt?: string;
+  submittedEvidence?: {
+    repoUrl?: string;
+    artifactUrl?: string;
+    notes?: string;
+    submittedAt: string;
+  };
+}
+
+export interface ForgedProject {
+  id: string;
+  userId: string;
+  title: string;
+  targetRole: string;
+  problemStatement: string;
+  targetUsers: string;
+  targetedGapSkills: string[];
+  recommendedStack: {
+    frontend?: string[];
+    backend?: string[];
+    database?: string[];
+    infrastructure?: string[];
+    testing?: string[];
+  };
+  architectureOutline: string;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced' | 'Industry-Grade';
+  estimatedTotalHours: number;
+  milestones: ForgedProjectMilestone[];
+  testingRequirements: string[];
+  securityConsiderations: string[];
+  deploymentPlan: string;
+  readmeChecklist: string[];
+  evaluationRubric: Array<{ criterion: string; weight: number }>;
+  status: 'planned' | 'in_progress' | 'completed';
+  createdAt: string;
+  updatedAt: string;
+}
+
+/* ============================================================================
+ * Integrated Feature 7 — Opportunity Match Engine
+ * ========================================================================== */
+
+export interface OpportunitySkillMatchItem {
+  skillId: string;
+  name: string;
+  requirementType: 'required' | 'preferred';
+  matched: boolean;
+  userProficiency: ProficiencyLevel;
+  requiredProficiency: ProficiencyLevel;
+  supportingEvidenceRef?: string;
+  evidenceStatus: SkillVerificationStatus;
+  gapExplanation: string;
+}
+
+export interface OpportunityMatchResult {
+  jobTitle: string;
+  company?: string;
+  location?: string;
+  targetRoleAlignment: string;
+  overallSkillAlignmentPercentage: number;
+  statedRequirementsEligibility: 'Fully Eligible' | 'Moderately Eligible' | 'Gaps Detected' | 'Under-Qualified';
+  requiredSkillsMatched: OpportunitySkillMatchItem[];
+  requiredSkillsMissing: OpportunitySkillMatchItem[];
+  preferredSkillsMatched: OpportunitySkillMatchItem[];
+  preferredSkillsMissing: OpportunitySkillMatchItem[];
+  projectEvidenceAlignment: Array<{
+    projectId: string;
+    title: string;
+    relevance: string;
+    skillsDemonstrated: string[];
+  }>;
+  assessmentEvidenceAlignment: Array<{
+    skillId: string;
+    skillName: string;
+    scorePercentage: number;
+    passed: boolean;
+  }>;
+  experienceAlignment: {
+    matchedExperience: string[];
+    unmatchedRequirements: string[];
+  };
+  recommendedActions: Array<{
+    actionType: 'proof_of_skill' | 'project_forge' | 'interview_prep' | 'resume_update';
+    title: string;
+    detail: string;
+    route: string;
+  }>;
+  explainabilityTrace: Array<{
+    dimension: string;
+    sourceEvidence: string;
+    impactOnAssessment: string;
+  }>;
+  hiringProbabilityNotice: string;
+  generatedAt: string;
+}
+
+/* ============================================================================
+ * Integrated Feature 8 — Portfolio Intelligence
+ * ========================================================================== */
+
+export interface PortfolioRepoAnalysis {
+  repoUrl: string;
+  repoName: string;
+  owner: string;
+  description?: string;
+  stars?: number;
+  primaryLanguage?: string;
+  detectedTechnologies: string[];
+  hasReadme: boolean;
+  hasTests: boolean;
+  hasDocumentation: boolean;
+  hasLicense: boolean;
+  architectureEvidence: string[];
+  identifiedEvidenceGaps: string[];
+  readmeSuggestions: string[];
+  inspectedAt: string;
+  inspectionMethod: 'public_metadata_inspect' | 'heuristic_structure';
+}
+
+export interface PortfolioResumeBullet {
+  projectId: string;
+  projectTitle: string;
+  bulletText: string;
+  supportedFacts: string[];
+  skillsDemonstrated: string[];
+  isEvidenceBacked: true;
+}
+
+export interface PortfolioProjectCard {
+  id: string;
+  title: string;
+  description: string;
+  technologies: string[];
+  problemAndSolution: {
+    problem: string;
+    solution: string;
+  };
+  verifiedFeatures: string[];
+  repoUrl?: string;
+  liveUrl?: string;
+  assessmentBacking?: Array<{
+    skillName: string;
+    score: number;
+  }>;
+  evidenceStatus: 'verified_complete' | 'in_progress' | 'planned';
+  suggestedBullets: PortfolioResumeBullet[];
+  repoAnalysis?: PortfolioRepoAnalysis;
+}
+
+export interface PortfolioIntelligenceData {
+  userId: string;
+  studentName: string;
+  targetRole: string;
+  visibility: 'private' | 'public_link';
+  projects: PortfolioProjectCard[];
+  verifiedSkillBadges: Array<{
+    skillId: string;
+    skillName: string;
+    verificationMethod: string;
+    score?: number;
+  }>;
+  overallPortfolioReadiness: number;
+  exportableMarkdown: string;
+  generatedAt: string;
+}
+
 
 

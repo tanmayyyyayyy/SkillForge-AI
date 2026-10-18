@@ -4,7 +4,8 @@ import { api } from '../services/api.js';
 import {
   CareerTwinSummary,
   CareerTwinScenarioComparison,
-  CareerTwinScenarioInput
+  CareerTwinScenarioInput,
+  CareerTwinEvolutionData
 } from '../types/index.js';
 import {
   Fingerprint,
@@ -13,7 +14,12 @@ import {
   HelpCircle,
   Sparkles,
   TrendingUp,
-  FlaskConical
+  FlaskConical,
+  GitFork,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Layers
 } from 'lucide-react';
 
 const MAX_FOCUS_SKILLS = 6;
@@ -34,6 +40,7 @@ const confidenceBadge: Record<string, string> = {
 export const CareerTwinPage: React.FC = () => {
   const toast = useToast();
   const [twin, setTwin] = useState<CareerTwinSummary | null>(null);
+  const [evolution, setEvolution] = useState<CareerTwinEvolutionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSimulating, setIsSimulating] = useState(false);
   const [comparison, setComparison] = useState<CareerTwinScenarioComparison | null>(null);
@@ -46,9 +53,15 @@ export const CareerTwinPage: React.FC = () => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await api.careerTwin.get();
+        const [res, evoRes] = await Promise.all([
+          api.careerTwin.get(),
+          api.careerTwinEvolution.getEvolution().catch(() => ({ evolution: null }))
+        ]);
         if (cancelled) return;
         setTwin(res.twin);
+        if (evoRes?.evolution) {
+          setEvolution(evoRes.evolution);
+        }
         setFocusSkills(res.twin.majorGaps.slice(0, 3).map(g => g.skillId));
         setWeeklyHours(res.twin.identity.weeklyHours || 10);
       } catch (err: any) {
@@ -324,6 +337,106 @@ export const CareerTwinPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Evolution Multi-Scenario Comparative Forecasts */}
+      {evolution && (
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <GitFork style={{ width: 22, height: 22, color: 'var(--color-accent)' }} />
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Career Twin Evolution: Comparative Scenarios</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Transparent, deterministic trajectories comparing learning paces against {evolution.targetRole.title}.
+                </p>
+              </div>
+            </div>
+            <div className="badge badge-accent" style={{ fontSize: '0.75rem' }}>
+              Base Readiness: {evolution.baseReadiness}%
+            </div>
+          </div>
+
+          <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', padding: '0.75rem 1rem', background: 'var(--bg-page)', borderRadius: '0.5rem', border: '1px solid var(--border-subtle)' }}>
+            <strong>Strategic Summary:</strong> {evolution.comparisonSummary}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+            {evolution.scenarios.map((sc) => {
+              const isRecommended = sc.scenarioId === evolution.recommendedScenario;
+              return (
+                <div
+                  key={sc.scenarioId}
+                  style={{
+                    padding: '1.2rem',
+                    borderRadius: '0.75rem',
+                    background: isRecommended ? 'rgba(211, 138, 25, 0.06)' : 'var(--bg-page)',
+                    border: isRecommended ? '1.5px solid var(--color-accent)' : '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: '1rem'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{sc.label}</div>
+                      {isRecommended && (
+                        <span className="badge badge-accent" style={{ fontSize: '0.65rem' }}>Recommended</span>
+                      )}
+                    </div>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', lineHeight: 1.4 }}>
+                      {sc.description}
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                      <div style={{ padding: '0.5rem', background: 'var(--bg-card)', borderRadius: '0.4rem', border: '1px solid var(--border-subtle)' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Commitment</div>
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{sc.weeklyStudyHours}h / week</div>
+                      </div>
+                      <div style={{ padding: '0.5rem', background: 'var(--bg-card)', borderRadius: '0.4rem', border: '1px solid var(--border-subtle)' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Timeline</div>
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>~{sc.estimatedWeeksToReadiness} weeks</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: 'var(--bg-card)', borderRadius: '0.4rem', marginBottom: '0.75rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Projected Readiness</span>
+                      <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--success)' }}>
+                        {sc.projectedReadinessScore}% (+{sc.projectedReadinessDelta}%)
+                      </span>
+                    </div>
+
+                    {sc.milestoneForecasts.length > 0 && (
+                      <div style={{ fontSize: '0.75rem', marginBottom: '0.5rem' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.3rem' }}>Next Key Milestone:</div>
+                        <div style={{ color: 'var(--text-secondary)' }}>
+                          • {sc.milestoneForecasts[0].milestoneName} ({sc.milestoneForecasts[0].targetSkill})
+                        </div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                          Target: {sc.milestoneForecasts[0].expectedCompletionDate} (~{sc.milestoneForecasts[0].requiredHours}h)
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.6rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    <div><strong>Key Assumption:</strong> {sc.assumptions[0] || 'Linear pace'}</div>
+                    {sc.riskFactors[0] && (
+                      <div style={{ color: 'var(--warning)', marginTop: '0.2rem' }}>
+                        <strong>Risk:</strong> {sc.riskFactors[0]}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem' }}>
+            {evolution.disclaimer}
+          </div>
+        </div>
+      )}
 
       <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{twin.disclaimer}</p>
     </div>

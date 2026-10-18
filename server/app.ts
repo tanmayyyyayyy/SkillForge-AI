@@ -20,6 +20,13 @@ import { careerTwinRouter } from './routes/careerTwin.js';
 import { warRoomRouter } from './routes/warRoom.js';
 import { evidenceGraphRouter } from './routes/evidenceGraph.js';
 import { trajectoryRouter } from './routes/trajectory.js';
+import { proofOfSkillRouter } from './routes/proofOfSkill.js';
+import { skillRadarRouter } from './routes/skillRadar.js';
+import { interviewArenaRouter } from './routes/interviewArena.js';
+import { projectForgeRouter } from './routes/projectForge.js';
+import { opportunityMatchRouter } from './routes/opportunityMatch.js';
+import { portfolioIntelligenceRouter } from './routes/portfolioIntelligence.js';
+import { missionControlRouter } from './routes/missionControl.js';
 
 /**
  * Builds the Express application without binding to a port.
@@ -83,6 +90,13 @@ export function createApp(): express.Express {
   app.use('/api/war-room', warRoomRouter);
   app.use('/api/evidence-graph', evidenceGraphRouter);
   app.use('/api/trajectory', trajectoryRouter);
+  app.use('/api/proof-of-skill', proofOfSkillRouter);
+  app.use('/api/skill-radar', skillRadarRouter);
+  app.use('/api/interview-arena', interviewArenaRouter);
+  app.use('/api/project-forge', projectForgeRouter);
+  app.use('/api/opportunity-match', opportunityMatchRouter);
+  app.use('/api/portfolio-intelligence', portfolioIntelligenceRouter);
+  app.use('/api/mission-control', missionControlRouter);
 
   // JSON 404 for unknown API endpoints (never fall through to HTML)
   app.use('/api', (_req: Request, res: Response) => {

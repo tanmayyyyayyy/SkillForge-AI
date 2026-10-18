@@ -9,7 +9,15 @@ import {
   AssessmentAttempt,
   LearningActivityLog,
   AiCoachMessage,
-  JobAnalysis
+  JobAnalysis,
+  ProofOfSkillEvidenceRecord,
+  InterviewSession,
+  MissionControlAction,
+  MissionControlDecision,
+  MissionActionState,
+  ForgedProject,
+  ForgedProjectMilestone,
+  PortfolioRepoAnalysis
 } from '../../src/types/index.js';
 import { DEFAULT_PROJECTS } from '../data/defaultProjects.js';
 import { resolveCurrentEvidence } from '../engine/assessmentEngine.js';
@@ -25,6 +33,12 @@ interface DatabaseSchema {
   readinessHistory: Record<string, number[]>;
   aiMessages: Record<string, AiCoachMessage[]>;
   jobAnalyses: Record<string, JobAnalysis[]>;
+  proofOfSkillEvidence: Record<string, ProofOfSkillEvidenceRecord[]>;
+  interviewSessions: Record<string, InterviewSession[]>;
+  missionControlDecisions: Record<string, MissionControlDecision[]>;
+  missionControlActions: Record<string, MissionControlAction[]>;
+  forgedProjects: Record<string, ForgedProject[]>;
+  portfolioReviews: Record<string, Record<string, PortfolioRepoAnalysis>>;
 }
 
 const DEFAULT_DB_FILE = path.resolve(process.cwd(), 'server/db/data.json');
@@ -265,7 +279,13 @@ export function getDemoSeedData(): DatabaseSchema {
           ]
         }
       ]
-    }
+    },
+    proofOfSkillEvidence: { [DEMO_USER_ID]: [] },
+    interviewSessions: { [DEMO_USER_ID]: [] },
+    missionControlDecisions: { [DEMO_USER_ID]: [] },
+    missionControlActions: { [DEMO_USER_ID]: [] },
+    forgedProjects: { [DEMO_USER_ID]: [] },
+    portfolioReviews: { [DEMO_USER_ID]: {} }
   };
 }
 
@@ -355,7 +375,13 @@ export class DatabaseStore {
       activities: asRecord<LearningActivityLog[]>(source.activities),
       readinessHistory: asRecord<number[]>(source.readinessHistory),
       jobAnalyses: asRecord<JobAnalysis[]>(source.jobAnalyses),
-      aiMessages: asRecord<AiCoachMessage[]>(source.aiMessages)
+      aiMessages: asRecord<AiCoachMessage[]>(source.aiMessages),
+      proofOfSkillEvidence: asRecord<ProofOfSkillEvidenceRecord[]>(source.proofOfSkillEvidence),
+      interviewSessions: asRecord<InterviewSession[]>(source.interviewSessions),
+      missionControlDecisions: asRecord<MissionControlDecision[]>(source.missionControlDecisions),
+      missionControlActions: asRecord<MissionControlAction[]>(source.missionControlActions),
+      forgedProjects: asRecord<ForgedProject[]>(source.forgedProjects),
+      portfolioReviews: asRecord<Record<string, PortfolioRepoAnalysis>>(source.portfolioReviews)
     };
   }
 
@@ -451,6 +477,12 @@ export class DatabaseStore {
         if (this.data.readinessHistory[u.id]) freshSeed.readinessHistory[u.id] = this.data.readinessHistory[u.id];
         if (this.data.jobAnalyses[u.id]) freshSeed.jobAnalyses[u.id] = this.data.jobAnalyses[u.id];
         if (this.data.aiMessages[u.id]) freshSeed.aiMessages[u.id] = this.data.aiMessages[u.id];
+        if (this.data.proofOfSkillEvidence[u.id]) freshSeed.proofOfSkillEvidence[u.id] = this.data.proofOfSkillEvidence[u.id];
+        if (this.data.interviewSessions[u.id]) freshSeed.interviewSessions[u.id] = this.data.interviewSessions[u.id];
+        if (this.data.missionControlDecisions[u.id]) freshSeed.missionControlDecisions[u.id] = this.data.missionControlDecisions[u.id];
+        if (this.data.missionControlActions[u.id]) freshSeed.missionControlActions[u.id] = this.data.missionControlActions[u.id];
+        if (this.data.forgedProjects[u.id]) freshSeed.forgedProjects[u.id] = this.data.forgedProjects[u.id];
+        if (this.data.portfolioReviews[u.id]) freshSeed.portfolioReviews[u.id] = this.data.portfolioReviews[u.id];
       }
       this.data = freshSeed;
     });
@@ -697,6 +729,172 @@ export class DatabaseStore {
       }
     });
     return removed;
+  }
+
+  // Proof of Skill operations
+  public getProofOfSkillEvidence(userId: string): ProofOfSkillEvidenceRecord[] {
+    const list = this.data.proofOfSkillEvidence[userId];
+    return Array.isArray(list) ? list : [];
+  }
+
+  public saveProofOfSkillEvidence(record: ProofOfSkillEvidenceRecord): void {
+    this.commit(() => {
+      if (!Array.isArray(this.data.proofOfSkillEvidence[record.userId])) {
+        this.data.proofOfSkillEvidence[record.userId] = [];
+      }
+      const list = this.data.proofOfSkillEvidence[record.userId];
+      const index = list.findIndex(r => r.challengeId === record.challengeId && r.skillId === record.skillId);
+      if (index !== -1) {
+        // Keep highest score or updated record
+        if (record.scorePercentage >= list[index].scorePercentage) {
+          list[index] = record;
+        }
+      } else {
+        list.push(record);
+      }
+    });
+  }
+
+  // Interview Arena operations
+  public getInterviewSessions(userId: string): InterviewSession[] {
+    const sessions = this.data.interviewSessions[userId];
+    return Array.isArray(sessions) ? sessions : [];
+  }
+
+  public getInterviewSession(userId: string, sessionId: string): InterviewSession | undefined {
+    return this.getInterviewSessions(userId).find(s => s.id === sessionId);
+  }
+
+  public saveInterviewSession(session: InterviewSession): void {
+    this.commit(() => {
+      if (!Array.isArray(this.data.interviewSessions[session.userId])) {
+        this.data.interviewSessions[session.userId] = [];
+      }
+      const list = this.data.interviewSessions[session.userId];
+      const index = list.findIndex(s => s.id === session.id);
+      if (index !== -1) {
+        list[index] = session;
+      } else {
+        list.push(session);
+      }
+    });
+  }
+
+  // Mission Control operations
+  public getMissionControlActions(userId: string): MissionControlAction[] {
+    const actions = this.data.missionControlActions[userId];
+    return Array.isArray(actions) ? actions : [];
+  }
+
+  public saveMissionControlActions(userId: string, actions: MissionControlAction[]): void {
+    this.commit(() => {
+      this.data.missionControlActions[userId] = actions;
+    });
+  }
+
+  public updateMissionControlActionState(userId: string, actionId: string, state: MissionActionState): MissionControlAction | undefined {
+    const actions = this.getMissionControlActions(userId);
+    const index = actions.findIndex(a => a.id === actionId);
+    if (index === -1) return undefined;
+
+    const updated: MissionControlAction = {
+      ...actions[index],
+      state,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.commit(() => {
+      const list = this.data.missionControlActions[userId];
+      if (Array.isArray(list) && list[index]?.id === actionId) {
+        list[index] = updated;
+      }
+    });
+    return updated;
+  }
+
+  public getMissionControlDecisions(userId: string): MissionControlDecision[] {
+    const decisions = this.data.missionControlDecisions[userId];
+    return Array.isArray(decisions) ? decisions : [];
+  }
+
+  public logMissionControlDecision(decision: MissionControlDecision): void {
+    this.commit(() => {
+      if (!Array.isArray(this.data.missionControlDecisions[decision.userId])) {
+        this.data.missionControlDecisions[decision.userId] = [];
+      }
+      this.data.missionControlDecisions[decision.userId].unshift(decision);
+    });
+  }
+
+  // Project Forge operations
+  public getForgedProjects(userId: string): ForgedProject[] {
+    const projects = this.data.forgedProjects[userId];
+    return Array.isArray(projects) ? projects : [];
+  }
+
+  public getForgedProject(userId: string, projectId: string): ForgedProject | undefined {
+    return this.getForgedProjects(userId).find(p => p.id === projectId);
+  }
+
+  public saveForgedProject(project: ForgedProject): void {
+    this.commit(() => {
+      if (!Array.isArray(this.data.forgedProjects[project.userId])) {
+        this.data.forgedProjects[project.userId] = [];
+      }
+      const list = this.data.forgedProjects[project.userId];
+      const index = list.findIndex(p => p.id === project.id);
+      if (index !== -1) {
+        list[index] = project;
+      } else {
+        list.push(project);
+      }
+    });
+  }
+
+  public updateForgedProjectMilestone(
+    userId: string,
+    projectId: string,
+    milestoneId: string,
+    updates: Partial<ForgedProjectMilestone>
+  ): ForgedProject | undefined {
+    const project = this.getForgedProject(userId, projectId);
+    if (!project) return undefined;
+
+    const milestoneIndex = project.milestones.findIndex(m => m.id === milestoneId);
+    if (milestoneIndex === -1) return undefined;
+
+    const updatedMilestones = [...project.milestones];
+    updatedMilestones[milestoneIndex] = {
+      ...updatedMilestones[milestoneIndex],
+      ...updates
+    };
+
+    const allCompleted = updatedMilestones.every(m => m.completed);
+    const updatedProject: ForgedProject = {
+      ...project,
+      milestones: updatedMilestones,
+      status: allCompleted ? 'completed' : 'in_progress',
+      updatedAt: new Date().toISOString()
+    };
+
+    this.saveForgedProject(updatedProject);
+    return updatedProject;
+  }
+
+  // Portfolio Intelligence operations
+  public getPortfolioRepoAnalysis(userId: string, repoUrl: string): PortfolioRepoAnalysis | undefined {
+    const userReviews = this.data.portfolioReviews[userId];
+    if (!userReviews || typeof userReviews !== 'object') return undefined;
+    return userReviews[repoUrl.toLowerCase()];
+  }
+
+  public savePortfolioRepoAnalysis(userId: string, analysis: PortfolioRepoAnalysis): void {
+    this.commit(() => {
+      if (!this.data.portfolioReviews[userId] || typeof this.data.portfolioReviews[userId] !== 'object') {
+        this.data.portfolioReviews[userId] = {};
+      }
+      this.data.portfolioReviews[userId][analysis.repoUrl.toLowerCase()] = analysis;
+    });
   }
 
 }

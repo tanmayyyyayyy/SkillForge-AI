@@ -28,7 +28,25 @@ import {
   JobAnalysis,
   JobAnalysisSummary,
   JobPreparationPlan,
-  ResumeAlignment
+  ResumeAlignment,
+  SkillRadarData,
+  ProofOfSkillChallenge,
+  ProofOfSkillEvaluationResult,
+  ProofOfSkillEvidenceRecord,
+  CareerMissionControlSummary,
+  MissionControlAction,
+  MissionControlDecision,
+  MissionActionState,
+  InterviewSession,
+  InterviewAnswerEvaluation,
+  InterviewMode,
+  CareerTwinEvolutionData,
+  ForgedProject,
+  ForgedProjectMilestone,
+  OpportunityMatchResult,
+  PortfolioIntelligenceData,
+  PortfolioRepoAnalysis,
+  PortfolioResumeBullet
 } from '../types/index.js';
 import { toUserMessage } from '../utils/errorMessage.js';
 
@@ -360,5 +378,113 @@ export const api = {
         environment?: string;
         aiProviderConfigured: boolean;
       }>('/health')
+  },
+
+  // Feature 1: SkillForge Radar
+  skillRadar: {
+    get: () =>
+      request<{ radar: SkillRadarData }>('/skill-radar')
+  },
+
+  // Feature 2: Proof of Skill
+  proofOfSkill: {
+    getChallenges: () =>
+      request<{ challenges: ProofOfSkillChallenge[] }>('/proof-of-skill/challenges'),
+    getChallenge: (id: string) =>
+      request<{ challenge: ProofOfSkillChallenge }>(`/proof-of-skill/challenges/${id}`),
+    evaluate: (id: string, solution: string) =>
+      request<{ result: ProofOfSkillEvaluationResult }>(`/proof-of-skill/challenges/${id}/evaluate`, {
+        method: 'POST',
+        body: JSON.stringify({ solution })
+      }),
+    getEvidence: () =>
+      request<{ evidence: ProofOfSkillEvidenceRecord[] }>('/proof-of-skill/evidence')
+  },
+
+  // Feature 3: Career Mission Control
+  missionControl: {
+    getSummary: () =>
+      request<{ missionControl: CareerMissionControlSummary }>('/mission-control'),
+    updateActionState: (actionId: string, state: MissionActionState) =>
+      request<{ action: MissionControlAction; message: string }>(`/mission-control/actions/${actionId}/state`, {
+        method: 'PATCH',
+        body: JSON.stringify({ state })
+      }),
+    recordDecision: (decision: { decisionType: string; title: string; rationale: string; metadata?: Record<string, unknown> }) =>
+      request<{ decision: MissionControlDecision }>('/mission-control/decisions', {
+        method: 'POST',
+        body: JSON.stringify(decision)
+      })
+  },
+
+  // Feature 4: Interview Arena
+  interviewArena: {
+    createSession: (mode: InterviewMode, targetRole?: string) =>
+      request<{ session: InterviewSession }>('/interview-arena/sessions', {
+        method: 'POST',
+        body: JSON.stringify({ mode, targetRole })
+      }),
+    listSessions: () =>
+      request<{ sessions: InterviewSession[] }>('/interview-arena/sessions'),
+    getSession: (id: string) =>
+      request<{ session: InterviewSession }>(`/interview-arena/sessions/${id}`),
+    submitAnswer: (id: string, questionId: string, userAnswer: string) =>
+      request<{ evaluation: InterviewAnswerEvaluation; session: InterviewSession }>(`/interview-arena/sessions/${id}/answer`, {
+        method: 'POST',
+        body: JSON.stringify({ questionId, userAnswer })
+      }),
+    finishSession: (id: string) =>
+      request<{ session: InterviewSession }>(`/interview-arena/sessions/${id}/finish`, {
+        method: 'POST'
+      })
+  },
+
+  // Feature 5: Career Twin Evolution
+  careerTwinEvolution: {
+    getEvolution: () =>
+      request<{ evolution: CareerTwinEvolutionData }>('/career-twin/evolution')
+  },
+
+  // Feature 6: Project Forge
+  projectForge: {
+    generate: (input: { difficulty?: string; targetedGapSkills?: string[]; preferredStack?: string[] } = {}) =>
+      request<{ project: ForgedProject }>('/project-forge/generate', {
+        method: 'POST',
+        body: JSON.stringify(input)
+      }),
+    list: () =>
+      request<{ projects: ForgedProject[] }>('/project-forge/projects'),
+    get: (id: string) =>
+      request<{ project: ForgedProject }>(`/project-forge/projects/${id}`),
+    verifyMilestone: (id: string, milestoneId: string, evidence: { repoUrl?: string; artifactUrl?: string; notes?: string }) =>
+      request<{ project: ForgedProject; milestone: ForgedProjectMilestone; awarded: boolean }>(`/project-forge/projects/${id}/milestones/${milestoneId}/verify`, {
+        method: 'POST',
+        body: JSON.stringify(evidence)
+      })
+  },
+
+  // Feature 7: Opportunity Match Engine
+  opportunityMatch: {
+    evaluate: (params: { description?: string; analysisId?: string }) =>
+      request<{ match: OpportunityMatchResult }>('/opportunity-match/evaluate', {
+        method: 'POST',
+        body: JSON.stringify(params)
+      })
+  },
+
+  // Feature 8: Portfolio Intelligence
+  portfolioIntelligence: {
+    get: () =>
+      request<{ portfolio: PortfolioIntelligenceData }>('/portfolio-intelligence'),
+    analyzeRepo: (repoUrl: string) =>
+      request<{ analysis: PortfolioRepoAnalysis }>('/portfolio-intelligence/analyze-repo', {
+        method: 'POST',
+        body: JSON.stringify({ repoUrl })
+      }),
+    generateBullets: (input: { title: string; technologies: string[]; milestones?: string[]; assessments?: string[] }) =>
+      request<{ bullets: PortfolioResumeBullet[] }>('/portfolio-intelligence/generate-bullets', {
+        method: 'POST',
+        body: JSON.stringify(input)
+      })
   }
 };
