@@ -6,18 +6,25 @@ import { CAREER_ROLES } from '../data/careers.js';
 import { getGeminiModel, geminiEngineLabel } from '../services/geminiClient.js';
 
 /**
- * AI Career Coach provider-selection tests.
+ * AI Career Coach provider-selection and response-quality tests.
  *
  * The Gemini provider is exercised only through a mocked global fetch — no
  * test ever requires a real GEMINI_API_KEY or performs a network call to
- * Google. The suite locks in three guarantees:
+ * Google. The suite locks in these guarantees:
  *   1. Gemini answers are used verbatim when the mocked provider succeeds,
  *      and both the response label and the stored transcript say so.
- *   2. Any provider failure (retired model → HTTP 404, network error, empty
+ *   2. Thought parts from thinking models are never presented as the answer.
+ *   3. Truncated output (finishReason MAX_TOKENS) is retried with a doubled
+ *      budget and, if still incomplete, falls back — never persisted as a
+ *      complete answer. Blocked output (SAFETY/…) fails fast without retries.
+ *   4. Any provider failure (retired model → HTTP 404, network error, empty
  *      candidate) falls back to the Deterministic Advisory Engine, and the
  *      fallback is logged — never silently, and never labeled as Gemini.
- *   3. Without a key, the deterministic engine answers and Gemini is never
- *      contacted.
+ *   5. Historical transcript entries keep the engine label they were stored
+ *      with; demo mode authenticates the seeded user without replacing
+ *      Gemini answers.
+ *   6. Without a key, the deterministic engine answers roadmap questions
+ *      with a structured plan and Gemini is never contacted.
  */
 
 const DEMO_TOKEN = 'demo_token_aarav';
@@ -45,7 +52,38 @@ function jsonResponse(status: number, payload: unknown): Response {
 }
 
 function geminiSuccess(text: string): Response {
-  return jsonResponse(200, { candidates: [{ content: { parts: [{ text }] } }] });
+  return jsonResponse(200, { candidates: [{ finishReason: 'STOP', content: { parts: [{ text }] } }] });
+}
+
+/** Mimics a thinking-model response: a thought-flagged part before the real answer. */
+function geminiWithThoughtParts(answer: string): Response {
+  return jsonResponse(200, {
+    candidates: [
+      {
+        finishReason: 'STOP',
+        content: {
+          parts: [
+            { text: 'Considering the backend stack: JWT auth, migrations with Alembic)', thought: true },
+            { text: answer }
+          ]
+        }
+      }
+    ]
+  });
+}
+
+/** Mimics generation cut off by the output token limit. */
+function geminiTruncated(text: string): Response {
+  return jsonResponse(200, {
+    candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text }] } }]
+  });
+}
+
+/** Mimics a safety-blocked response. */
+function geminiBlocked(): Response {
+  return jsonResponse(200, {
+    candidates: [{ finishReason: 'SAFETY', content: { parts: [] } }]
+  });
 }
 
 function geminiEmptyCandidates(): Response {
@@ -60,6 +98,26 @@ function geminiNotFound(): Response {
 
 function warnLogText(): string {
   return warnSpy.mock.calls.map(args => args.map(String).join(' ')).join('\n');
+}
+
+/** A complete 30-day roadmap long enough to exercise verbatim persistence. */
+function buildLongRoadmap(): string {
+  const days = Array.from({ length: 30 }, (_, i) => `- **Day ${i + 1}:** Complete focused task ${i + 1} and push progress to GitHub.`).join('\n');
+  return `### 30-Day Backend Development Roadmap
+
+#### Week 1 — Foundations
+${days.split('\n').slice(0, 7).join('\n')}
+
+#### Week 2 — APIs
+${days.split('\n').slice(7, 14).join('\n')}
+
+#### Week 3 — Databases
+${days.split('\n').slice(14, 21).join('\n')}
+
+#### Week 4 — Deployment
+${days.split('\n').slice(21, 30).join('\n')}
+
+**Final capstone:** a deployed API with JWT auth, tests, and a README.`;
 }
 
 interface ApiResponse {
@@ -203,6 +261,197 @@ describe('AI Coach — Gemini success path', () => {
     expect(res.body.engineUsed).toBe('Gemini gemini-3.6-flash (Live API)');
     expect(res.body.message.content).toBe(MOCK_GEMINI_REPLY);
   });
+
+  it('never presents a thinking-model thought part as the answer', async () => {
+    // Thinking models emit reasoning parts flagged thought:true before the
+    // answer. Reading parts[0] returned a mid-sentence thought fragment as
+    // the whole reply (e.g. ", JWT auth, migrations with Alembic).").
+    geminiResponder = () => geminiWithThoughtParts(MOCK_GEMINI_REPLY);
+
+    const res = await api('/api/ai/chat', { method: 'POST', body: { prompt: MODEL_PROMPT } });
+
+    expect(res.status).toBe(200);
+    expect(res.body.engineUsed).toBe(geminiEngineLabel());
+    expect(res.body.message.content).toBe(MOCK_GEMINI_REPLY);
+    expect(res.body.message.content).not.toContain('Considering the backend stack');
+  });
+
+  it('asks Gemini for a complete answer with enough tokens and question-first instructions', async () => {
+    const profile = (await api('/api/profile')).body.profile;
+    const res = await api('/api/ai/chat', { method: 'POST', body: { prompt: MODEL_PROMPT } });
+    expect(res.status).toBe(200);
+
+    const { body } = geminiCalls[0];
+    expect(body.generationConfig.maxOutputTokens).toBeGreaterThanOrEqual(4096);
+
+    const sentText = body.contents[0].parts[0].text;
+    // The old prompt capped answers at 300 words, forcing short generic roadmaps.
+    expect(sentText).not.toContain('300 words');
+    expect(sentText).toContain('primary instruction');
+    expect(sentText).toContain('four weekly objectives');
+    expect(sentText).toContain('every single day');
+    expect(sentText).toContain('capstone');
+    expect(sentText).toContain(`${profile.weeklyHours} hours/week`);
+    // The question itself must be present, after the profile context.
+    expect(sentText).toContain(`Student question: ${MODEL_PROMPT}`);
+    expect(sentText.indexOf('Student Profile')).toBeLessThan(sentText.indexOf('Student question:'));
+  });
+
+  it('retries a truncated response with a doubled token budget and returns the complete answer', async () => {
+    const fullRoadmap = buildLongRoadmap();
+    let call = 0;
+    geminiResponder = () => {
+      call += 1;
+      return call === 1
+        ? geminiTruncated('### 30-Day Backend Development Roadmap\n\n#### Week 1 — Foundations\n- **Day 1:** setup')
+        : geminiSuccess(fullRoadmap);
+    };
+
+    const res = await api('/api/ai/chat', { method: 'POST', body: { prompt: MODEL_PROMPT } });
+
+    expect(res.status).toBe(200);
+    expect(res.body.engineUsed).toBe(geminiEngineLabel());
+    expect(res.body.message.content).toBe(fullRoadmap);
+    expect(geminiCalls).toHaveLength(2);
+    expect(geminiCalls[1].body.generationConfig.maxOutputTokens).toBe(
+      geminiCalls[0].body.generationConfig.maxOutputTokens * 2
+    );
+    expect(warnLogText()).toContain('MAX_TOKENS');
+  });
+
+  it('never persists a truncated answer: still-cut output falls back to the deterministic engine', async () => {
+    geminiResponder = () => geminiTruncated('### Week 1 — Foundations\n- **Day 1:** setup');
+
+    const res = await api('/api/ai/chat', { method: 'POST', body: { prompt: MODEL_PROMPT } });
+
+    expect(res.status).toBe(200);
+    expect(res.body.engineUsed).toBe('Deterministic Advisory Engine');
+    // The half-answer from Gemini must not leak into the transcript.
+    expect(res.body.message.content).not.toContain('Day 1:** setup');
+    expect(res.body.message.content).toContain('Week 4');
+    expect(warnLogText()).toContain('MAX_TOKENS');
+
+    const messages = (await api('/api/ai/messages')).body.messages as any[];
+    expect(messages.slice(-2).every(m => m.engineUsed === 'Deterministic Advisory Engine')).toBe(true);
+  });
+
+  it('fails fast on blocked responses without wasting retries', async () => {
+    geminiResponder = () => geminiBlocked();
+
+    const res = await api('/api/ai/chat', { method: 'POST', body: { prompt: MODEL_PROMPT } });
+
+    expect(res.status).toBe(200);
+    expect(res.body.engineUsed).toBe('Deterministic Advisory Engine');
+    expect(geminiCalls).toHaveLength(1);
+    expect(warnLogText()).toContain('SAFETY');
+  });
+
+  it('persists a long structured 30-day roadmap verbatim end to end', async () => {
+    const fullRoadmap = buildLongRoadmap();
+    geminiResponder = () => geminiSuccess(fullRoadmap);
+
+    const res = await api('/api/ai/chat', { method: 'POST', body: { prompt: MODEL_PROMPT } });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message.content).toBe(fullRoadmap);
+    expect(res.body.message.content.endsWith('README.')).toBe(true);
+
+    const messages = (await api('/api/ai/messages')).body.messages as any[];
+    const stored = messages[messages.length - 1];
+    expect(stored.content).toBe(fullRoadmap);
+    expect(stored.engineUsed).toBe(geminiEngineLabel());
+  });
+
+  it('uses the user question as the instruction, not a generic profile summary', async () => {
+    const profile = (await api('/api/profile')).body.profile;
+    const fullRoadmap = buildLongRoadmap();
+    geminiResponder = () => geminiSuccess(fullRoadmap);
+
+    const res = await api('/api/ai/chat', { method: 'POST', body: { prompt: MODEL_PROMPT } });
+
+    // The reply is exactly what the question asked for — the demo profile
+    // (Aarav Sharma) personalizes the prompt but never replaces the answer.
+    expect(res.body.message.content).toBe(fullRoadmap);
+    expect(res.body.message.content).not.toContain('Career Intelligence Analysis');
+
+    const sentText = geminiCalls[0].body.contents[0].parts[0].text;
+    expect(sentText).toContain(profile.fullName);
+    expect(sentText).toContain(MODEL_PROMPT);
+  });
+});
+
+describe('AI Coach — transcript attribution consistency', () => {
+  it('keeps historical engine labels intact when later messages come from Gemini', async () => {
+    const before = (await api('/api/ai/messages')).body.messages as any[];
+    const welcomeBefore = before.find(m => m.id === 'msg_welcome');
+    expect(welcomeBefore).toBeDefined();
+    expect(welcomeBefore.engineUsed).toBe('Deterministic Advisory Engine');
+
+    const res = await api('/api/ai/chat', { method: 'POST', body: { prompt: MODEL_PROMPT } });
+    expect(res.body.engineUsed).toBe(geminiEngineLabel());
+
+    const after = (await api('/api/ai/messages')).body.messages as any[];
+    const welcomeAfter = after.find(m => m.id === 'msg_welcome');
+
+    // The seeded greeting is historical: same content, same label — never
+    // relabeled as Gemini even though newer messages are Gemini-served.
+    expect(welcomeAfter.content).toBe(welcomeBefore.content);
+    expect(welcomeAfter.engineUsed).toBe('Deterministic Advisory Engine');
+
+    // Newer Gemini-served messages keep their own label through reload.
+    const last = after[after.length - 1];
+    expect(last.engineUsed).toBe(geminiEngineLabel());
+    expect(last.content).toBe(MOCK_GEMINI_REPLY);
+  });
+
+  it('demo mode authenticates the seeded user without replacing Gemini answers', async () => {
+    // Demo login issues the demo token; chat still runs the real provider
+    // path with the demo student's profile as personalization context.
+    const login = await api('/api/auth/demo', { method: 'POST', token: null });
+    expect(login.status).toBe(200);
+    expect(login.body.token).toBe(DEMO_TOKEN);
+
+    const res = await api('/api/ai/chat', {
+      token: login.body.token,
+      method: 'POST',
+      body: { prompt: MODEL_PROMPT }
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.engineUsed).toBe(geminiEngineLabel());
+    expect(res.body.message.content).toBe(MOCK_GEMINI_REPLY);
+
+    const sentText = geminiCalls[0].body.contents[0].parts[0].text;
+    expect(sentText).toContain(login.body.profile.fullName);
+  });
+});
+
+describe('AI Coach — deterministic roadmap fallback (no key)', () => {
+  it('answers a roadmap question with a complete four-week skeleton', async () => {
+    delete process.env.GEMINI_API_KEY;
+    const profile = (await api('/api/profile')).body.profile;
+
+    const res = await api('/api/ai/chat', {
+      method: 'POST',
+      body: { prompt: 'Give me a 30-day backend development roadmap' }
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.engineUsed).toBe('Deterministic Advisory Engine');
+    expect(geminiCalls).toHaveLength(0);
+
+    const content = res.body.message.content as string;
+    expect(content).toContain('30-Day');
+    expect(content).toContain('Week 1');
+    expect(content).toContain('Week 2');
+    expect(content).toContain('Week 3');
+    expect(content).toContain('Week 4');
+    expect(content).toContain('Day 1');
+    expect(content).toContain(`${profile.weeklyHours} hours/week`);
+    expect(content).toContain('Final project');
+    // Not the generic catch-all summary.
+    expect(content).not.toContain('Career Intelligence Analysis');
+    expect(res.body.message.suggestedActions.length).toBeGreaterThan(0);
+  });
 });
 
 describe('AI Coach — deterministic fallback', () => {
@@ -216,7 +465,10 @@ describe('AI Coach — deterministic fallback', () => {
     expect(res.status).toBe(200);
     expect(res.body.engineUsed).toBe('Deterministic Advisory Engine');
     expect(res.body.message.content).not.toBe(MOCK_GEMINI_REPLY);
-    expect(res.body.message.content).toContain('Career Intelligence Analysis');
+    // A roadmap request must still receive a roadmap-shaped fallback answer.
+    expect(res.body.message.content).toContain('30-Day');
+    expect(res.body.message.content).toContain('Week 1');
+    expect(res.body.message.content).toContain('Week 4');
     expect(geminiCalls.length).toBeGreaterThan(0);
     expect(warnLogText()).toContain('HTTP 404');
 
@@ -236,7 +488,7 @@ describe('AI Coach — deterministic fallback', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.engineUsed).toBe('Deterministic Advisory Engine');
-    expect(res.body.message.content).toContain('Career Intelligence Analysis');
+    expect(res.body.message.content).toContain('30-Day');
     expect(warnLogText()).toContain('Gemini request error');
   });
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
+import { renderChatMarkdown } from '../utils/chatMarkdown.js';
 import { AiCoachMessage } from '../types/index.js';
 import {
   Bot,
@@ -206,11 +207,11 @@ export const AiCoachPage: React.FC = () => {
                   border: isUser ? 'none' : '1px solid var(--border-medium)',
                   fontSize: '0.92rem',
                   lineHeight: 1.6,
-                  whiteSpace: 'pre-wrap',
+                  whiteSpace: isUser ? 'pre-wrap' : 'normal',
                   boxShadow: 'var(--shadow-sm)'
                 }}
               >
-                {msg.content}
+                {isUser ? msg.content : renderChatMarkdown(msg.content)}
               </div>
 
               {/* Suggested Follow-ups */}

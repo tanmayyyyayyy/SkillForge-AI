@@ -53,8 +53,11 @@ aiCoachRouter.post('/chat', authMiddleware, async (req: AuthenticatedRequest, re
       const inProgressTask = roadmapTasks.find(t => t.status === 'in_progress')?.skillName || 'None active';
       const passedAssessmentsText = assessments.filter(a => a.passed).map(a => a.skillName).join(', ') || 'None yet';
 
-      const systemPrompt = `You are the SkillForge AI Career Intelligence Coach. You provide personalized, direct, tactical career advice based on the student's actual profile and real skill gaps.
-Student Profile:
+      const systemPrompt = `You are the SkillForge AI Career Intelligence Coach — a personal career mentor for ${role.title} aspirants.
+
+The student's question is your primary instruction. Answer exactly what was asked. The profile below is context for personalizing your answer (their skills, gaps, target role, availability) — never substitute a generic profile summary for the question they actually asked.
+
+Student Profile (personalization context):
 - Name: ${profile.fullName}
 - Education: ${profile.degree} (${profile.educationLevel}, Class of ${profile.graduationYear})
 - Target Role: ${role.title} (${role.category})
@@ -65,15 +68,16 @@ Student Profile:
 - Weekly Study Availability: ${profile.weeklyHours} hours/week
 - Learning Style: ${profile.preferredLearningStyle}
 
-Rules:
-1. Be encouraging, highly practical, and laser-focused on employer expectations for the ${role.title} role.
-2. Use markdown formatting with bullet points and bold headers.
-3. Keep response under 300 words. Never output generic advice; tailor it directly to their specific missing skills and available hours.`;
+Response rules:
+1. Be encouraging, direct, and practical for the ${role.title} role.
+2. Use markdown: '###' section headers, bold for emphasis, and bullet or numbered lists.
+3. Match depth to the request. A quick question gets a short answer. A request for a roadmap, plan, or schedule gets the complete structure that was asked for — never cut it short and never pad it with generic filler.
+4. When asked for a multi-week roadmap or study plan, always include: four weekly objectives; a task for every single day of the plan; a concrete deliverable for each week; one final capstone project; and realistic time estimates that fit the student's ${profile.weeklyHours} hours/week availability.`;
 
       const candidateText = await callGeminiText(`${systemPrompt}\n\nStudent question: ${prompt}`, {
         temperature: 0.7,
-        maxOutputTokens: 600,
-        timeoutMs: 15000
+        maxOutputTokens: 4096,
+        timeoutMs: 30000
       });
 
       if (candidateText) {
@@ -177,6 +181,44 @@ Here is what is currently limiting your career readiness score (**${readiness.ov
           'What should I learn next?',
           'Which project should I build?',
           'How should I structure my study hours?'
+        ];
+      } else if (
+        userPromptLower.includes('roadmap') ||
+        userPromptLower.includes('30-day') ||
+        userPromptLower.includes('30 day') ||
+        userPromptLower.includes('month') ||
+        userPromptLower.includes('study plan') ||
+        userPromptLower.includes('learning plan') ||
+        userPromptLower.includes('day plan')
+      ) {
+        const perDayHours = Math.round((profile.weeklyHours / 7) * 10) / 10;
+        replyContent = `### 30-Day ${role.title} Roadmap
+
+Built for **${profile.weeklyHours} hours/week** (~${profile.weeklyHours * 4} hours total), aligned with your **${profile.preferredLearningStyle}** learning style. Your anchor skill throughout: **${topGap?.name || 'core fundamentals'}**.
+
+#### Week 1 — Foundations
+- **Day 1:** Set up your environment and map the ${role.title} skill landscape (~${perDayHours}h).
+- **Days 2–7 (one focused task per day):** Core theory and documentation for **${topGap?.name || 'fundamentals'}**, with short coding drills each evening.
+- **Deliverable:** Study notes repo plus 10 solved practice exercises committed to GitHub.
+
+#### Week 2 — Guided Practice
+- **Days 8–14 (one task per day):** Tutorials and small exercises that apply Week 1 concepts, increasing difficulty through the week.
+- **Deliverable:** A mini-project demonstrating your top gap skill end to end.
+
+#### Week 3 — Capstone Build
+- **Days 15–21 (one milestone per day):** Build **${activeProject.title}**, committing working increments daily.
+- **Deliverable:** Deployed or demo-ready repository with a clear README.
+
+#### Week 4 — Integration & Interview Prep
+- **Days 22–28 (one task per day):** Polish the capstone, write one technical blog or README walkthrough, drill behavioral answers.
+- **Days 29–30:** Review all notes, take the **${topGap?.name || 'skill'} Assessment** in SkillForge, and publish your portfolio.
+- **Final project:** Ship the capstone with tests and documentation to demonstrate ${role.title}-level competence.
+
+*This is the offline fallback plan. For a fully personalized day-by-day version generated by live AI, ask again once the Gemini API is reachable.*`;
+        suggestedActions = [
+          'What should I learn next?',
+          'Which project will best prove my missing skills?',
+          'How do I prepare for technical interviews?'
         ];
       } else {
         replyContent = `### Career Intelligence Analysis
