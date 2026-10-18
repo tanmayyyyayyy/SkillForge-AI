@@ -16,7 +16,12 @@ import {
   FileText,
   Settings,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Swords,
+  Fingerprint,
+  ShieldCheck,
+  Network,
+  TrendingUp
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -26,6 +31,11 @@ export const Sidebar: React.FC = () => {
 
   const navItems = [
     { to: '/dashboard', label: 'Main Dashboard', icon: LayoutDashboard },
+    { to: '/career-twin', label: 'Career Twin', icon: Fingerprint },
+    { to: '/war-room', label: 'Career War Room', icon: Swords },
+    { to: '/resume-truth', label: 'Resume Truth Engine', icon: ShieldCheck },
+    { to: '/evidence-graph', label: 'Career Evidence Graph', icon: Network },
+    { to: '/trajectory', label: 'Trajectory Simulator', icon: TrendingUp },
     { to: '/profile', label: 'Student Profile', icon: User },
     { to: '/careers', label: 'Career Selection', icon: Compass },
     { to: '/analysis', label: 'Skill Gap Analysis', icon: GitCompare },

@@ -5,9 +5,98 @@ import { extractPdfText, isPdfBuffer, PdfExtractionError } from '../services/pdf
 import { extractDeterministic } from '../services/resumeExtractor.js';
 import { extractWithGemini, isGeminiConfigured } from '../services/aiExtraction.js';
 import { validateResumeExtraction } from '../../src/utils/resumeSchema.js';
-import type { ResumeExtractionResult } from '../../src/types/index.js';
+import { checkResumeTruth } from '../services/resumeTruthService.js';
+import type {
+  ResumeExtractionResult,
+  ResumeExtractedProject,
+  ResumeExtractedSkill,
+  ResumeTruthDraft,
+  ProficiencyLevel
+} from '../../src/types/index.js';
 
 export const resumeRouter = Router();
+
+const TRUTH_MAX_SKILLS = 200;
+const TRUTH_MAX_PROJECTS = 50;
+const TRUTH_MAX_EXPERIENCE = 50;
+
+function clampLevel(value: unknown): ProficiencyLevel {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(5, n)) as ProficiencyLevel;
+}
+
+/**
+ * Parses the untrusted resume draft for the truth check. Returns null when the
+ * shape is invalid; individual malformed entries are skipped so a single bad
+ * line cannot fail the whole request.
+ */
+function parseTruthDraft(body: unknown): ResumeTruthDraft | null {
+  if (!body || typeof body !== 'object') return null;
+  const source = body as Record<string, unknown>;
+
+  if (!Array.isArray(source.skills)) return null;
+  if (source.skills.length > TRUTH_MAX_SKILLS) return null;
+  if (source.projects !== undefined && !Array.isArray(source.projects)) return null;
+  if (source.experience !== undefined && !Array.isArray(source.experience)) return null;
+
+  const skills: ResumeExtractedSkill[] = [];
+  for (const raw of source.skills) {
+    if (!raw || typeof raw !== 'object') continue;
+    const entry = raw as Record<string, unknown>;
+    const name = typeof entry.name === 'string' ? entry.name.trim().slice(0, 120) : '';
+    const skillId = typeof entry.skillId === 'string' ? entry.skillId.trim().slice(0, 120) : '';
+    if (!name && !skillId) continue;
+    skills.push({
+      skillId: skillId || name,
+      name: name || skillId,
+      category: typeof entry.category === 'string' ? entry.category.slice(0, 60) : '',
+      proficiency: clampLevel(entry.proficiency)
+    });
+  }
+
+  const projects: ResumeExtractedProject[] = [];
+  if (Array.isArray(source.projects)) {
+    for (const raw of source.projects.slice(0, TRUTH_MAX_PROJECTS)) {
+      if (!raw || typeof raw !== 'object') continue;
+      const entry = raw as Record<string, unknown>;
+      const title = typeof entry.title === 'string' ? entry.title.trim().slice(0, 200) : '';
+      if (!title) continue;
+      projects.push({
+        title,
+        description: typeof entry.description === 'string' ? entry.description.slice(0, 2000) : '',
+        technologies: Array.isArray(entry.technologies)
+          ? entry.technologies.filter((t): t is string => typeof t === 'string').slice(0, 40)
+          : [],
+        repoUrl: typeof entry.repoUrl === 'string' ? entry.repoUrl.slice(0, 500) : undefined,
+        liveUrl: typeof entry.liveUrl === 'string' ? entry.liveUrl.slice(0, 500) : undefined
+      });
+    }
+  }
+
+  const experience = [];
+  if (Array.isArray(source.experience)) {
+    for (const raw of source.experience.slice(0, TRUTH_MAX_EXPERIENCE)) {
+      if (!raw || typeof raw !== 'object') continue;
+      const entry = raw as Record<string, unknown>;
+      const organization = typeof entry.organization === 'string' ? entry.organization.trim().slice(0, 120) : '';
+      const role = typeof entry.role === 'string' ? entry.role.trim().slice(0, 120) : '';
+      if (!organization && !role) continue;
+      experience.push({
+        id: typeof entry.id === 'string' ? entry.id : `exp-${experience.length}`,
+        organization,
+        role,
+        duration: typeof entry.duration === 'string' ? entry.duration.slice(0, 120) : '',
+        responsibilities: typeof entry.responsibilities === 'string' ? entry.responsibilities.slice(0, 2000) : '',
+        skillsDemonstrated: Array.isArray(entry.skillsDemonstrated)
+          ? entry.skillsDemonstrated.filter((s): s is string => typeof s === 'string').slice(0, 40)
+          : []
+      });
+    }
+  }
+
+  return { skills, projects, experience };
+}
 
 /**
  * Simple in-memory per-user rate limiter for the (externally reachable) upload
@@ -134,6 +223,31 @@ resumeRouter.post('/extract', authMiddleware, async (req: AuthenticatedRequest, 
   } catch (err: any) {
     console.error('Resume extraction error:', err?.message || err);
     res.status(500).json({ error: 'Failed to process the resume. Please try again.' });
+  }
+});
+
+// Compares a reviewed resume draft against the student's own stored evidence.
+// Nothing is persisted — the draft lives only for the duration of this request.
+resumeRouter.post('/truth-check', authMiddleware, (req: AuthenticatedRequest, res: Response): void => {
+  try {
+    const draft = parseTruthDraft(req.body);
+    if (!draft) {
+      res.status(400).json({
+        error: `Provide a draft with a skills array (up to ${TRUTH_MAX_SKILLS} entries); skills may include optional projects and experience.`
+      });
+      return;
+    }
+
+    const report = checkResumeTruth(req.userId!, draft);
+    if (!report) {
+      res.status(404).json({ error: 'Profile not found. Complete onboarding first.' });
+      return;
+    }
+
+    res.json({ report });
+  } catch (err: any) {
+    console.error('Resume truth check error:', err?.message || err);
+    res.status(500).json({ error: 'Failed to check the resume. Please try again.' });
   }
 });
 

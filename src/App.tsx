@@ -2,10 +2,12 @@ import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.js';
 import { ToastProvider } from './context/ToastContext.js';
+import { useAuth } from './context/AuthContext.js';
 import { ProtectedRoute } from './components/ProtectedRoute.js';
 import { Sidebar } from './components/Sidebar.js';
 import { DemoBanner } from './components/DemoBanner.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
+import { CommandPalette } from './components/CommandPalette.js';
 
 // Lazy-loaded pages for code splitting — reduces initial bundle by ~60%
 const LandingPage = React.lazy(() => import('./pages/LandingPage.js').then(m => ({ default: m.LandingPage })));
@@ -24,6 +26,11 @@ const AssessmentsPage = React.lazy(() => import('./pages/AssessmentsPage.js').th
 const AnalyticsPage = React.lazy(() => import('./pages/AnalyticsPage.js').then(m => ({ default: m.AnalyticsPage })));
 const ReadinessReportPage = React.lazy(() => import('./pages/ReadinessReportPage.js').then(m => ({ default: m.ReadinessReportPage })));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage.js').then(m => ({ default: m.SettingsPage })));
+const CareerTwinPage = React.lazy(() => import('./pages/CareerTwinPage.js').then(m => ({ default: m.CareerTwinPage })));
+const WarRoomPage = React.lazy(() => import('./pages/WarRoomPage.js').then(m => ({ default: m.WarRoomPage })));
+const ResumeTruthPage = React.lazy(() => import('./pages/ResumeTruthPage.js').then(m => ({ default: m.ResumeTruthPage })));
+const EvidenceGraphPage = React.lazy(() => import('./pages/EvidenceGraphPage.js').then(m => ({ default: m.EvidenceGraphPage })));
+const TrajectorySimulatorPage = React.lazy(() => import('./pages/TrajectorySimulatorPage.js').then(m => ({ default: m.TrajectorySimulatorPage })));
 
 const PageLoader: React.FC = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -51,9 +58,11 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const AppRoutes: React.FC = () => {
   const location = useLocation();
+  const { user } = useAuth();
 
   return (
     <ErrorBoundary key={location.pathname}>
+      {user && <CommandPalette />}
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
@@ -82,6 +91,61 @@ const AppRoutes: React.FC = () => {
         {/* Path aliases */}
         <Route path="/gap-analysis" element={<Navigate to="/analysis" replace />} />
         <Route path="/readiness-report" element={<Navigate to="/report" replace />} />
+
+        <Route
+          path="/career-twin"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <CareerTwinPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/war-room"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <WarRoomPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/resume-truth"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ResumeTruthPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/evidence-graph"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <EvidenceGraphPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/trajectory"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <TrajectorySimulatorPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/profile"

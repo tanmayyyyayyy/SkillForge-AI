@@ -5,7 +5,11 @@ import { api } from '../services/api.js';
 import {
   JobDescriptionAnalysis,
   JobDescriptionMatch,
-  JobRequirementKind
+  JobRequirementKind,
+  JobAnalysisSummary,
+  JobAnalysis,
+  JobPreparationPlan,
+  ResumeAlignment
 } from '../types/index.js';
 import {
   FileText,
@@ -17,7 +21,11 @@ import {
   Sparkles,
   ArrowRight,
   ExternalLink,
-  Info
+  Info,
+  BookmarkPlus,
+  Trash2,
+  ClipboardList,
+  AlignLeft
 } from 'lucide-react';
 
 const KIND_LABEL: Record<JobRequirementKind, string> = {
@@ -75,6 +83,16 @@ export const JdAnalyzerPage: React.FC = () => {
     maxChars: 20000
   });
 
+  // Saved analyses + preparation plan + resume alignment
+  const [jobTitle, setJobTitle] = useState('');
+  const [company, setCompany] = useState('');
+  const [savedAnalyses, setSavedAnalyses] = useState<JobAnalysisSummary[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedSaved, setSelectedSaved] = useState<JobAnalysis | null>(null);
+  const [plan, setPlan] = useState<JobPreparationPlan | null>(null);
+  const [alignment, setAlignment] = useState<ResumeAlignment | null>(null);
+  const [planOrAlignmentLoading, setPlanOrAlignmentLoading] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     api.jd
@@ -85,10 +103,109 @@ export const JdAnalyzerPage: React.FC = () => {
       .catch(() => {
         // Non-fatal: client falls back to the documented defaults.
       });
+    api.jd
+      .listAnalyses()
+      .then(res => {
+        if (!cancelled) setSavedAnalyses(res.analyses);
+      })
+      .catch(() => {
+        // Non-fatal: saved list simply stays empty.
+      });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const handleSave = useCallback(async () => {
+    const trimmed = description.trim();
+    if (trimmed.length < config.minChars) {
+      setError(`Paste at least ${config.minChars} characters of a job description before saving.`);
+      return;
+    }
+    setIsSaving(true);
+    setError(null);
+    try {
+      const res = await api.jd.saveAnalysis(trimmed, { title: jobTitle || undefined, company: company || undefined });
+      setSelectedSaved(res.analysis);
+      const list = await api.jd.listAnalyses();
+      setSavedAnalyses(list.analyses);
+      toast.success('Analysis saved. You can revisit it, build a plan, and align your resume.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save this analysis.';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [description, config, jobTitle, company, toast]);
+
+  const openSavedAnalysis = useCallback(async (id: string) => {
+    setPlanOrAlignmentLoading(true);
+    setError(null);
+    try {
+      const res = await api.jd.getAnalysis(id);
+      setSelectedSaved(res.analysis);
+      setAnalysis(res.analysis.analysis);
+      setDescription(res.analysis.description);
+      setKindFilter('All');
+      setPlan(null);
+      setAlignment(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load this saved analysis.';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setPlanOrAlignmentLoading(false);
+    }
+  }, [toast]);
+
+  const deleteSavedAnalysis = useCallback(async (id: string) => {
+    try {
+      await api.jd.deleteAnalysis(id);
+      setSavedAnalyses(prev => prev.filter(a => a.id !== id));
+      if (selectedSaved?.id === id) {
+        setSelectedSaved(null);
+        setPlan(null);
+        setAlignment(null);
+      }
+      toast.success('Saved analysis deleted.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete this analysis.';
+      toast.error(message);
+    }
+  }, [selectedSaved, toast]);
+
+  const loadPlan = useCallback(async (id: string) => {
+    setPlanOrAlignmentLoading(true);
+    setError(null);
+    try {
+      const res = await api.jd.getPreparationPlan(id);
+      setPlan(res.plan);
+      setAlignment(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to build the preparation plan.';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setPlanOrAlignmentLoading(false);
+    }
+  }, [toast]);
+
+  const loadAlignment = useCallback(async (id: string) => {
+    setPlanOrAlignmentLoading(true);
+    setError(null);
+    try {
+      const res = await api.jd.getResumeAlignment(id);
+      setAlignment(res.alignment);
+      setPlan(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to build resume alignment.';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setPlanOrAlignmentLoading(false);
+    }
+  }, [toast]);
 
   const handleAnalyze = useCallback(async () => {
     const trimmed = description.trim();
@@ -159,7 +276,9 @@ export const JdAnalyzerPage: React.FC = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <Link to="/war-room" className="btn btn-ghost btn-sm">Career War Room</Link>
+          <Link to="/evidence-graph" className="btn btn-ghost btn-sm">Evidence Graph</Link>
           <Link to="/analysis" className="editorial-btn-primary" style={{ padding: '0.55rem 1.1rem', fontSize: '0.88rem' }}>
             <span>Full Gap Analysis</span>
             <ArrowRight size={15} />
@@ -208,6 +327,34 @@ export const JdAnalyzerPage: React.FC = () => {
           </button>
           <button type="button" className="btn btn-ghost" onClick={clearAll} disabled={isAnalyzing || (!description && !analysis)}>
             Clear
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.85rem' }}>
+          <input
+            className="form-input"
+            placeholder="Job title (optional)"
+            value={jobTitle}
+            onChange={e => setJobTitle(e.target.value)}
+            style={{ flex: '1 1 180px', minWidth: 160, fontSize: '0.85rem' }}
+            aria-label="Job title (optional)"
+          />
+          <input
+            className="form-input"
+            placeholder="Company (optional)"
+            value={company}
+            onChange={e => setCompany(e.target.value)}
+            style={{ flex: '1 1 160px', minWidth: 150, fontSize: '0.85rem' }}
+            aria-label="Company (optional)"
+          />
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleSave}
+            disabled={isSaving || description.trim().length < config.minChars}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            <BookmarkPlus size={15} /> {isSaving ? 'Saving…' : 'Save analysis'}
           </button>
         </div>
 
@@ -493,6 +640,124 @@ export const JdAnalyzerPage: React.FC = () => {
           </details>
         </div>
       )}
+
+      {/* SAVED ANALYSES + PLAN + ALIGNMENT */}
+      <div className="card" style={{ background: 'var(--color-paper)', border: '1px solid var(--border-subtle)' }}>
+        <div className="card-header">
+          <span className="card-title" style={{ fontFamily: 'var(--font-serif)', fontSize: '1.35rem' }}>
+            <ClipboardList size={18} color="var(--color-accent)" /> Saved analyses
+          </span>
+        </div>
+        {savedAnalyses.length === 0 ? (
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+            No saved analyses yet. Paste a posting, optionally add a title and company, then press <strong>Save analysis</strong> to revisit it, build a preparation plan, and align your resume.
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {savedAnalyses.map(a => (
+              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.7rem 0.85rem', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.92rem' }}>{a.title}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {a.company ? `${a.company} · ` : ''}saved {new Date(a.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+                {a.matchScore !== null && (
+                  <span className="badge" style={{ fontSize: '0.72rem' }}>{a.matchScore}% match</span>
+                )}
+                <button className="btn btn-outline btn-sm" onClick={() => openSavedAnalysis(a.id)}>Open</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => loadPlan(a.id)} aria-label={`Build plan for ${a.title}`}>
+                  <ClipboardList size={14} /> Plan
+                </button>
+                <button className="btn btn-ghost btn-sm" onClick={() => loadAlignment(a.id)} aria-label={`Align resume for ${a.title}`}>
+                  <AlignLeft size={14} /> Align
+                </button>
+                <button className="btn btn-ghost btn-sm" onClick={() => deleteSavedAnalysis(a.id)} aria-label={`Delete ${a.title}`}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {planOrAlignmentLoading && (
+          <div role="status" aria-live="polite" style={{ marginTop: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.86rem' }}>
+            <div className="spin" aria-hidden="true" style={{ width: 18, height: 18, border: '3px solid rgba(211, 138, 25, 0.2)', borderTopColor: 'var(--color-accent)', borderRadius: '50%' }} />
+            <span>Working…</span>
+          </div>
+        )}
+
+        {plan && (
+          <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <strong style={{ fontSize: '1rem' }}>Preparation plan — {plan.targetTitle}</strong>
+              <span className="badge" style={{ fontSize: '0.72rem' }}>{plan.coverage}% covered · {plan.steps.length} steps</span>
+            </div>
+            {plan.steps.length === 0 ? (
+              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)' }}>No unmet requirements — nothing to add right now.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {plan.steps.map((step, i) => (
+                  <div key={`${step.skillId}-${i}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.6rem 0.7rem', background: 'var(--color-paper-light)', borderRadius: 'var(--radius-sm)' }}>
+                    <span className={`badge badge-${step.priority.toLowerCase()}`} style={{ fontSize: '0.68rem' }}>{step.priority}</span>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{step.skillName}</div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{step.whyItMatters}</div>
+                      {step.resource && (
+                        <a href={step.resource.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem', color: 'var(--color-accent)', fontWeight: 600 }}>
+                          {step.resource.title} ↗
+                        </a>
+                      )}
+                    </div>
+                    <Link to={step.route} className="btn btn-ghost btn-sm">Open</Link>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>{plan.disclaimer}</p>
+          </div>
+        )}
+
+        {alignment && (
+          <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <strong style={{ fontSize: '1rem' }}>Resume alignment — {alignment.targetTitle}</strong>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {alignment.usedResumeDraft ? 'Using your resume draft' : 'Using profile only (no resume draft supplied)'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
+              <span className="badge" style={{ fontSize: '0.72rem', color: 'var(--success)' }}>Evidence found: {alignment.summary.evidenceFound}</span>
+              <span className="badge" style={{ fontSize: '0.72rem', color: 'var(--warning)' }}>Partial: {alignment.summary.partial}</span>
+              <span className="badge" style={{ fontSize: '0.72rem', color: 'var(--danger)' }}>Gap: {alignment.summary.gap}</span>
+              <span className="badge" style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Not enough info: {alignment.summary.notEnoughInfo}</span>
+            </div>
+            {alignment.items.length === 0 ? (
+              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)' }}>No requirements extracted from this posting.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {alignment.items.map((item, i) => (
+                  <div key={`${item.skillId}-${i}`} style={{ padding: '0.65rem 0.75rem', background: 'var(--color-paper-light)', borderRadius: 'var(--radius-sm)', borderLeft: `3px solid ${item.classification === 'evidence-found' ? 'var(--success)' : item.classification === 'partial' ? 'var(--warning)' : item.classification === 'gap' ? 'var(--danger)' : 'var(--text-muted)'}` }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <strong style={{ fontSize: '0.9rem' }}>{item.skillName}</strong>
+                      <span className="badge badge-pill" style={{ fontSize: '0.68rem' }}>{KIND_LABEL[item.kind]}</span>
+                      <span style={{ fontSize: '0.74rem', fontWeight: 700 }}>
+                        {item.classification === 'evidence-found' ? 'Evidence found' : item.classification === 'partial' ? 'Partial' : item.classification === 'gap' ? 'Gap' : 'Not enough info'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>{item.jdExpectation}</div>
+                    {item.profileEvidence.length > 0 && (
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Profile evidence: {item.profileEvidence.join('; ')}</div>
+                    )}
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', marginTop: '0.3rem' }}>{item.nextAction}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>{alignment.disclaimer}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

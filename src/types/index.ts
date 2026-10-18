@@ -737,6 +737,86 @@ export interface JobDescriptionAnalysis {
   generatedAt: string;
 }
 
+export interface JobAnalysis {
+  id: string;
+  userId: string;
+  title: string;
+  company?: string;
+  location?: string;
+  url?: string;
+  description: string;
+  analysis: JobDescriptionAnalysis;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Lightweight list item returned by the saved-analyses endpoint. */
+export interface JobAnalysisSummary {
+  id: string;
+  title: string;
+  company?: string;
+  location?: string;
+  url?: string;
+  matchScore: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ResumeAlignmentClassification = 'evidence-found' | 'partial' | 'gap' | 'not-enough-info';
+
+export interface ResumeAlignmentItem {
+  skillId: string;
+  skillName: string;
+  kind: JobRequirementKind;
+  importance: number;
+  jdExpectation: string;
+  classification: ResumeAlignmentClassification;
+  alignmentNote: string;
+  profileEvidence: string[];
+  resumeVerdict?: ResumeClaimVerdict;
+  nextAction: string;
+}
+
+export interface ResumeAlignmentSummary {
+  evidenceFound: number;
+  partial: number;
+  gap: number;
+  notEnoughInfo: number;
+}
+
+export interface ResumeAlignment {
+  targetTitle: string;
+  usedResumeDraft: boolean;
+  items: ResumeAlignmentItem[];
+  summary: ResumeAlignmentSummary;
+  generatedAt: string;
+  disclaimer: string;
+}
+
+export interface JobPreparationStep {
+  skillId: string;
+  skillName: string;
+  kind: JobRequirementKind;
+  state: JobMatchState;
+  reason: string;
+  whyItMatters: string;
+  priority: 'Critical' | 'High' | 'Medium' | 'Low';
+  estimatedHours?: number;
+  resource?: { title: string; url: string; type: string; free: boolean };
+  roadmapTaskId?: string;
+  route: string;
+}
+
+export interface JobPreparationPlan {
+  targetTitle: string;
+  targetCompany?: string;
+  coverage: number;
+  coveredSkills: number;
+  steps: JobPreparationStep[];
+  generatedAt: string;
+  disclaimer: string;
+}
+
 /** Normalized shape produced by either extractor before scoring. */
 export interface JobDescriptionExtractionResult {
   extraction: JobDescriptionExtraction;
@@ -788,3 +868,375 @@ export interface ReadinessReportPayload {
   nextSevenDays: NextSevenDaysPlan;
   generatedAt: string;
 }
+
+/* ============================================================================
+ * Feature 1 — Career Twin AI (Subphase 3A)
+ *
+ * A derived, evidence-based model of a student's capabilities. The twin is
+ * assembled on demand from existing records (profile, assessments, projects)
+ * and the canonical gap/readiness engines — it is never a second source of
+ * truth and never introduces a competing readiness formula.
+ * ========================================================================== */
+
+export type CareerEvidenceKind = 'self-reported' | 'assessment' | 'project' | 'none';
+
+/** A concrete artefact that supports (or is relevant to) a skill. */
+export interface CareerTwinEvidenceRef {
+  kind: 'assessment' | 'project';
+  id: string;
+  label: string;
+  detail?: string;
+  url?: string;
+}
+
+export interface CareerTwinSkill {
+  skillId: string;
+  name: string;
+  category: string;
+  currentLevel: ProficiencyLevel;
+  /** Bar defined by the student's target role, or null when the role doesn't require it. */
+  requiredLevel: ProficiencyLevel | null;
+  gap: number;
+  status: SkillVerificationStatus;
+  /** How the proficiency estimate is currently backed. */
+  evidenceKind: 'self-reported' | 'assessment' | 'project' | 'none';
+  /** Confidence in the *current* estimate given available evidence. */
+  confidence: 'high' | 'medium' | 'low';
+  evidence: CareerTwinEvidenceRef[];
+  lastUpdated?: string;
+  nextAction: string;
+  inTargetRole: boolean;
+}
+
+export interface CareerTwinIdentity {
+  userId: string;
+  fullName: string;
+  targetRoleId: string;
+  targetRoleTitle: string;
+  educationLevel: string;
+  academicStanding?: string;
+  graduationYear: number;
+  weeklyHours: number;
+  learningStyle: string;
+  targetCompanies: string[];
+  interests: string[];
+}
+
+export interface CareerTwinSummary {
+  identity: CareerTwinIdentity;
+  readiness: CareerReadinessScore;
+  evidenceBreakdown: EvidenceProvenance;
+  strengths: string[];
+  majorGaps: Array<{
+    skillId: string;
+    name: string;
+    gap: number;
+    priority: PriorityBadge;
+    nextAction: string;
+  }>;
+  missingEvidence: string[];
+  skills: CareerTwinSkill[];
+  generatedAt: string;
+  disclaimer: string;
+}
+
+/* ===== Scenario simulation (explicit, deterministic estimates) ===== */
+
+export interface CareerTwinScenarioInput {
+  label: string;
+  focusSkillIds: string[];
+  weeklyHours: number;
+  horizonWeeks: number;
+}
+
+export interface CareerTwinScenarioSkillProjection {
+  skillId: string;
+  name: string;
+  fromLevel: ProficiencyLevel;
+  toLevel: ProficiencyLevel;
+  targetLevel: ProficiencyLevel;
+  weeksNeeded: number;
+}
+
+export interface CareerTwinScenarioResult {
+  label: string;
+  assumptions: string[];
+  focusSkillIds: string[];
+  focusSkillNames: string[];
+  projectedReadiness: number;
+  readinessDelta: number;
+  skillsTouched: CareerTwinScenarioSkillProjection[];
+  remainingGapSkills: number;
+  notes: string[];
+}
+
+export interface CareerTwinScenarioComparison {
+  baseReadiness: number;
+  scenarios: CareerTwinScenarioResult[];
+  recommendation: string;
+  /** Every scenario is a heuristic projection of the student's own data. */
+  disclaimer: string;
+  generatedAt: string;
+}
+
+/* ===== Career War Room ===== */
+
+export type WarRoomTaskKind = 'learn' | 'assess' | 'project' | 'practice';
+
+export interface WarRoomTask {
+  id: string;
+  kind: WarRoomTaskKind;
+  title: string;
+  explanation: string;
+  estimatedMinutes: number;
+  priority: 'Critical' | 'High' | 'Medium' | 'Low';
+  priorityScore: number;
+  skillId?: string;
+  skillName?: string;
+  completionCriteria: string;
+  /** Client route that carries out the real action (never a duplicate task system). */
+  route: string;
+  actionLabel: string;
+  status: 'todo' | 'in_progress' | 'done';
+  /** Id of the underlying entity (roadmap task, project, milestone, skill). */
+  sourceId?: string;
+}
+
+export interface WarRoomPendingAssessment {
+  skillId: string;
+  name: string;
+  priority: PriorityBadge;
+}
+
+export interface WarRoomProjectMilestone {
+  projectId: string;
+  projectTitle: string;
+  milestoneId: string;
+  milestoneTitle: string;
+  milestoneDescription: string;
+}
+
+export interface WarRoomAchievement {
+  id: string;
+  title: string;
+  detail: string;
+  timestamp: string;
+}
+
+export interface WarRoomWeeklyProgress {
+  completedThisWeek: number;
+  scheduledHours: number;
+  completedHours: number;
+  readinessScore: number;
+  readinessDelta: number;
+}
+
+export interface WarRoomActiveGoal {
+  roleId: string;
+  roleTitle: string;
+  currentReadiness: number;
+  horizon: string | null;
+  targetCompanies: string[];
+  remainingCriticalGaps: number;
+}
+
+export interface WarRoomCriticalGap {
+  skillId: string;
+  name: string;
+  currentLevel: ProficiencyLevel;
+  requiredLevel: ProficiencyLevel;
+  gap: number;
+  priority: PriorityBadge;
+}
+
+export interface WarRoomMilestone {
+  taskId: string;
+  skillId: string;
+  skillName: string;
+  stageName: string;
+  estimatedHours: number;
+  completionPercentage: number;
+}
+
+export interface WarRoomNextAction {
+  taskId: string;
+  title: string;
+  explanation: string;
+  route: string;
+  actionLabel: string;
+}
+
+export interface CareerWarRoom {
+  userId: string;
+  targetRole: { id: string; title: string } | null;
+  todaysMission: WarRoomTask | null;
+  /** The three highest-priority unfinished items, in order. */
+  topPriorities: WarRoomTask[];
+  activeGoal: WarRoomActiveGoal | null;
+  criticalGaps: WarRoomCriticalGap[];
+  incompleteMilestones: WarRoomMilestone[];
+  completedTasks: WarRoomTask[];
+  recommendedNextAction: WarRoomNextAction | null;
+  priorityTasks: WarRoomTask[];
+  pendingAssessments: WarRoomPendingAssessment[];
+  projectMilestones: WarRoomProjectMilestone[];
+  achievements: WarRoomAchievement[];
+  weeklyProgress: WarRoomWeeklyProgress;
+  generatedAt: string;
+  /** Explains how priorities were derived (transparent, no black box). */
+  prioritizationNotes: string[];
+}
+
+/* ============================================================================
+ * Feature 7 — Resume Truth Engine (Subphase 3C)
+ *
+ * Evaluates the *claims* made on a resume draft against the evidence actually
+ * stored in the student's profile. It never fabricates endorsements and never
+ * silently rewrites the resume — it only reports, per claim, what is verifiable
+ * and what would need evidence before it can be treated as proven.
+ * ========================================================================== */
+
+export type ResumeClaimVerdict = 'verified' | 'project-backed' | 'in-profile' | 'unsupported';
+
+export interface ResumeSkillClaimAssessment {
+  skillId: string;
+  name: string;
+  /** Proficiency the resume draft asserts. */
+  resumeLevel: ProficiencyLevel;
+  /** Proficiency independently supported by stored evidence (0 when none). */
+  evidencedLevel: ProficiencyLevel;
+  verdict: ResumeClaimVerdict;
+  /** True when the resume claims a higher level than the evidence supports. */
+  levelOverstated: boolean;
+  evidence: CareerTwinEvidenceRef[];
+  suggestion: string;
+}
+
+export interface ResumeProjectClaimAssessment {
+  title: string;
+  hasLink: boolean;
+  matchedProfileProject: boolean;
+  suggestion: string;
+}
+
+export interface ResumeExperienceClaimAssessment {
+  organization: string;
+  role: string;
+  note: string;
+}
+
+export interface ResumeMissingClaim {
+  skillId: string;
+  name: string;
+  requiredLevel: ProficiencyLevel;
+  /** True when the student already has evidence that could support this line. */
+  hasEvidence: boolean;
+}
+
+export interface ResumeTruthSummary {
+  totalClaims: number;
+  verified: number;
+  projectBacked: number;
+  inProfile: number;
+  unsupported: number;
+  /** Percentage of claims backed by independent (assessment/project) evidence. */
+  evidenceBackedRatio: number;
+}
+
+export interface ResumeTruthReport {
+  summary: ResumeTruthSummary;
+  skills: ResumeSkillClaimAssessment[];
+  projects: ResumeProjectClaimAssessment[];
+  experience: ResumeExperienceClaimAssessment[];
+  missingFromResume: ResumeMissingClaim[];
+  advisories: string[];
+  disclaimer: string;
+  generatedAt: string;
+}
+
+/** Untrusted draft submitted for a truth check; never persisted. */
+export interface ResumeTruthDraft {
+  skills: ResumeExtractedSkill[];
+  projects?: ResumeExtractedProject[];
+  experience?: StudentExperience[];
+}
+
+/* ============================================================================
+ * Feature 9 — Career Evidence Graph (Subphase 3D)
+ *
+ * A derived graph of how skills connect to the role they target and to the
+ * assessments/projects that substantiate them. Built from the same evidence
+ * index as the Career Twin, so provenance labels always agree.
+ * ========================================================================== */
+
+export type EvidenceNodeKind = 'skill' | 'assessment' | 'project' | 'role' | 'milestone';
+
+export interface EvidenceGraphNode {
+  id: string;
+  kind: EvidenceNodeKind;
+  label: string;
+  /** Skill nodes only. */
+  status?: SkillVerificationStatus;
+  proficiency?: ProficiencyLevel;
+  requiredLevel?: ProficiencyLevel | null;
+  requiredByRole?: boolean;
+  /** Assessment / project / milestone nodes only. */
+  detail?: string;
+  /** Milestone (roadmap task) nodes only. */
+  completed?: boolean;
+  estimatedHours?: number;
+  /** Source id of the underlying record, when one exists. */
+  sourceId?: string;
+}
+
+export interface EvidenceGraphEdge {
+  from: string;
+  to: string;
+  kind: 'verified-by' | 'demonstrated-by' | 'requires' | 'improves';
+}
+
+export interface CareerEvidenceGraph {
+  role: { id: string; title: string } | null;
+  nodes: EvidenceGraphNode[];
+  edges: EvidenceGraphEdge[];
+  summary: EvidenceProvenance;
+  generatedAt: string;
+  disclaimer: string;
+}
+
+/* ============================================================================
+ * Feature 6 — Trajectory Simulator (Subphase 3E)
+ *
+ * Projects plausible readiness changes under different effort scenarios using the
+ * same canonical readiness concept. Projections are explicitly conservative and
+ * never fabricated; the UI must show assumptions.
+ * ========================================================================== */
+
+export interface TrajectoryPoint {
+  timestamp: string;
+  overallScore: number;
+  criticalGaps: number;
+  verifiedSkills: number;
+}
+
+export interface TrajectoryScenario {
+  label: string;
+  focusSkillIds: string[];
+  weeklyHours: number;
+  horizonWeeks: number;
+  projectedScore: number;
+  delta: number;
+  assumptions: string[];
+}
+
+export interface TrajectorySimulation {
+  baseScore: number;
+  history: number[];
+  points: TrajectoryPoint[];
+  scenarios: TrajectoryScenario[];
+  generatedAt: string;
+  disclaimer: string;
+}
+
+
+

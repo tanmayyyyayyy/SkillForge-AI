@@ -16,6 +16,10 @@ import { activitiesRouter } from './routes/activities.js';
 import { resumeRouter } from './routes/resume.js';
 import { jobDescriptionRouter } from './routes/jd.js';
 import { weeklyPlanRouter } from './routes/weeklyPlan.js';
+import { careerTwinRouter } from './routes/careerTwin.js';
+import { warRoomRouter } from './routes/warRoom.js';
+import { evidenceGraphRouter } from './routes/evidenceGraph.js';
+import { trajectoryRouter } from './routes/trajectory.js';
 
 /**
  * Builds the Express application without binding to a port.
@@ -75,6 +79,10 @@ export function createApp(): express.Express {
   app.use('/api/resume', resumeRouter);
   app.use('/api/jd', jobDescriptionRouter);
   app.use('/api/weekly-plan', weeklyPlanRouter);
+  app.use('/api/career-twin', careerTwinRouter);
+  app.use('/api/war-room', warRoomRouter);
+  app.use('/api/evidence-graph', evidenceGraphRouter);
+  app.use('/api/trajectory', trajectoryRouter);
 
   // JSON 404 for unknown API endpoints (never fall through to HTML)
   app.use('/api', (_req: Request, res: Response) => {

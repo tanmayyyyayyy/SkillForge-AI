@@ -8,7 +8,8 @@ import {
   AssessmentResult,
   AssessmentAttempt,
   LearningActivityLog,
-  AiCoachMessage
+  AiCoachMessage,
+  JobAnalysis
 } from '../../src/types/index.js';
 import { DEFAULT_PROJECTS } from '../data/defaultProjects.js';
 import { resolveCurrentEvidence } from '../engine/assessmentEngine.js';
@@ -23,6 +24,7 @@ interface DatabaseSchema {
   activities: Record<string, LearningActivityLog[]>;
   readinessHistory: Record<string, number[]>;
   aiMessages: Record<string, AiCoachMessage[]>;
+  jobAnalyses: Record<string, JobAnalysis[]>;
 }
 
 const DEFAULT_DB_FILE = path.resolve(process.cwd(), 'server/db/data.json');
@@ -247,6 +249,7 @@ export function getDemoSeedData(): DatabaseSchema {
     assessmentAttempts: {},
     activities: { [DEMO_USER_ID]: demoActivities },
     readinessHistory: { [DEMO_USER_ID]: [] },
+    jobAnalyses: {},
     aiMessages: {
       [DEMO_USER_ID]: [
         {
@@ -351,6 +354,7 @@ export class DatabaseStore {
       assessmentAttempts: asRecord<AssessmentAttempt[]>(source.assessmentAttempts),
       activities: asRecord<LearningActivityLog[]>(source.activities),
       readinessHistory: asRecord<number[]>(source.readinessHistory),
+      jobAnalyses: asRecord<JobAnalysis[]>(source.jobAnalyses),
       aiMessages: asRecord<AiCoachMessage[]>(source.aiMessages)
     };
   }
@@ -445,6 +449,7 @@ export class DatabaseStore {
         if (this.data.assessmentAttempts[u.id]) freshSeed.assessmentAttempts[u.id] = this.data.assessmentAttempts[u.id];
         if (this.data.activities[u.id]) freshSeed.activities[u.id] = this.data.activities[u.id];
         if (this.data.readinessHistory[u.id]) freshSeed.readinessHistory[u.id] = this.data.readinessHistory[u.id];
+        if (this.data.jobAnalyses[u.id]) freshSeed.jobAnalyses[u.id] = this.data.jobAnalyses[u.id];
         if (this.data.aiMessages[u.id]) freshSeed.aiMessages[u.id] = this.data.aiMessages[u.id];
       }
       this.data = freshSeed;
@@ -653,6 +658,47 @@ export class DatabaseStore {
       this.data.aiMessages[userId].push(message);
     });
   }
+
+  // Job analyses (saved JD evaluations)
+  public getJobAnalyses(userId: string): JobAnalysis[] {
+    const analyses = this.data.jobAnalyses[userId];
+    return Array.isArray(analyses) ? analyses : [];
+  }
+
+  public getJobAnalysis(userId: string, analysisId: string): JobAnalysis | undefined {
+    return this.getJobAnalyses(userId).find(a => a.id === analysisId);
+  }
+
+  public saveJobAnalysis(analysis: JobAnalysis): void {
+    this.commit(() => {
+      if (!Array.isArray(this.data.jobAnalyses[analysis.userId])) {
+        this.data.jobAnalyses[analysis.userId] = [];
+      }
+      const list = this.data.jobAnalyses[analysis.userId];
+      const index = list.findIndex(a => a.id === analysis.id);
+      if (index !== -1) {
+        list[index] = analysis;
+      } else {
+        list.push(analysis);
+      }
+    });
+  }
+
+  public deleteJobAnalysis(userId: string, analysisId: string): boolean {
+    let removed = false;
+    this.commit(() => {
+      const list = this.data.jobAnalyses[userId];
+      if (Array.isArray(list)) {
+        const idx = list.findIndex(a => a.id === analysisId);
+        if (idx !== -1) {
+          list.splice(idx, 1);
+          removed = true;
+        }
+      }
+    });
+    return removed;
+  }
+
 }
 
 export const db = new DatabaseStore();

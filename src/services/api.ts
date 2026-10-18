@@ -16,7 +16,19 @@ import {
   ResumeExtractionResult,
   ReadinessReportPayload,
   JobDescriptionAnalysis,
-  WeeklyPlan
+  WeeklyPlan,
+  CareerTwinSummary,
+  CareerTwinScenarioComparison,
+  CareerTwinScenarioInput,
+  CareerWarRoom,
+  CareerEvidenceGraph,
+  TrajectorySimulation,
+  ResumeTruthDraft,
+  ResumeTruthReport,
+  JobAnalysis,
+  JobAnalysisSummary,
+  JobPreparationPlan,
+  ResumeAlignment
 } from '../types/index.js';
 import { toUserMessage } from '../utils/errorMessage.js';
 
@@ -230,6 +242,44 @@ export const api = {
       requestFile('/readiness/report/pdf')
   },
 
+  // Career Twin (Feature 1)
+  careerTwin: {
+    get: () =>
+      request<{ twin: CareerTwinSummary }>('/career-twin'),
+    simulate: (scenarios: CareerTwinScenarioInput[]) =>
+      request<{ comparison: CareerTwinScenarioComparison }>('/career-twin/simulate', {
+        method: 'POST',
+        body: JSON.stringify({ scenarios })
+      })
+  },
+
+  // Career War Room (Feature 2)
+  warRoom: {
+    get: () =>
+      request<{ warRoom: CareerWarRoom }>('/war-room')
+  },
+
+  // Resume Truth Engine (Feature 7)
+  resumeTruth: {
+    check: (draft: ResumeTruthDraft) =>
+      request<{ report: ResumeTruthReport }>('/resume/truth-check', {
+        method: 'POST',
+        body: JSON.stringify(draft)
+      })
+  },
+
+  // Trajectory Simulator (Feature 6)
+  trajectory: {
+    get: () =>
+      request<{ trajectory: TrajectorySimulation }>('/trajectory')
+  },
+
+  // Career Evidence Graph (Feature 9)
+  evidenceGraph: {
+    get: () =>
+      request<{ graph: CareerEvidenceGraph }>('/evidence-graph')
+  },
+
   // AI Coach
   ai: {
     getMessages: () =>
@@ -266,6 +316,25 @@ export const api = {
       request<{ analysis: JobDescriptionAnalysis }>('/jd/analyze', {
         method: 'POST',
         body: JSON.stringify({ description })
+      }),
+    // Job Description Intelligence (saved analyses, plan, alignment)
+    saveAnalysis: (description: string, meta: { title?: string; company?: string; location?: string; url?: string } = {}) =>
+      request<{ analysis: JobAnalysis }>('/jd/analyses', {
+        method: 'POST',
+        body: JSON.stringify({ description, ...meta })
+      }),
+    listAnalyses: () =>
+      request<{ analyses: JobAnalysisSummary[] }>('/jd/analyses'),
+    getAnalysis: (id: string) =>
+      request<{ analysis: JobAnalysis }>(`/jd/analyses/${id}`),
+    deleteAnalysis: (id: string) =>
+      request<{ success: boolean }>(`/jd/analyses/${id}`, { method: 'DELETE' }),
+    getPreparationPlan: (id: string) =>
+      request<{ plan: JobPreparationPlan }>(`/jd/analyses/${id}/plan`, { method: 'POST' }),
+    getResumeAlignment: (id: string, resume?: ResumeTruthDraft) =>
+      request<{ alignment: ResumeAlignment }>(`/jd/analyses/${id}/alignment`, {
+        method: 'POST',
+        body: JSON.stringify(resume ? { resume } : {})
       })
   },
 
