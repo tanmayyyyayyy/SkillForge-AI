@@ -2,7 +2,7 @@
 
 **Turn career goals into measurable skills, verifiable proof, and actionable job readiness.**
 
-> 🏆 **SaarthiX Hackathon 2026 — Official Level 2 MVP Submission (19 October 2026)**
+> 🏆 **SaarthiX Hackathon 2026 — Level 2 MVP Submission (19 October 2026)**
 > 🌐 **Live Application:** [https://skillforge-ai-q4tz.onrender.com](https://skillforge-ai-q4tz.onrender.com)
 > 📦 **GitHub Repository:** [https://github.com/tanmayyyyayyy/SkillForge-AI](https://github.com/tanmayyyyayyy/SkillForge-AI)
 > 🧪 **Test Suite:** **365 tests passing across 32 suites (100% pass rate)**
@@ -22,12 +22,12 @@
 
 ## The Problem
 
-India produces **1.5 million** engineering graduates annually, yet **60%+ struggle to secure relevant employment**. The core issue isn't a lack of learning resources — it's the absence of an **intelligent, personalized bridge** between a student's current capabilities and what employers actually require.
+Engineering students and early-career professionals often struggle to translate their learning into demonstrable, job-relevant skills. They may lack a clear understanding of the requirements for their target roles, which skills to prioritize, and how to demonstrate their capabilities beyond a resume or course completion certificate.
 
-Students face three critical challenges:
-1. **Skill Opacity** — They don't know *which* specific skills they are missing for their target career.
-2. **Learning Scatter** — They consume courses randomly without a structured, dependency-aware progression.
-3. **Evidence Gap** — They cannot quantifiably prove readiness to employers beyond generic, unverified completion certificates.
+Learners face three critical challenges:
+1. **Skill Opacity** — Unclear understanding of the specific skills and proficiency levels required for their target roles.
+2. **Learning Scatter** — Consuming disparate courses without a structured, dependency-aware progression.
+3. **Evidence Gap** — Inability to quantifiably prove readiness to employers beyond generic, unverified completion certificates.
 
 ---
 
@@ -35,15 +35,31 @@ Students face three critical challenges:
 
 **SkillForge AI** is an explainable career readiness intelligence platform that:
 
-1. **Analyzes** student profiles against curated, industry-validated career role requirements.
+1. **Analyzes** student profiles against curated career-role requirements based on technical skill mappings and job-description analysis.
 2. **Identifies** critical skill gaps using a deterministic, explainable gap analysis algorithm (`gap × importance weight`).
 3. **Orchestrates** career progress via **Career Autopilot** with human-in-the-loop approval gating and an immutable Decision Audit Trail.
-4. **Verifies** practical coding skills through server-authoritative test assertions in the **Skill Proof Lab**.
-5. **Maintains** an immutable, tamper-resistant **Canonical Evidence Ledger** with confidence scoring.
+4. **Verifies** practical coding skills through static test assertions and rubric checks in the **Skill Proof Lab**.
+5. **Maintains** a **Canonical Evidence Ledger** recording demonstrated skills, provenance metadata, and explicit evaluation limitations.
 6. **Synthesizes** an interactive **Evidence Graph** mapping Job Requirements &rarr; Required Skills &rarr; Recorded Evidence &rarr; Recommended Actions &rarr; Target Readiness.
-7. **Simulates** alternative career trajectories and weekly study commitments in the **Career Twin What-If Lab**.
+7. **Simulates** alternative career trajectories and study commitments in the **Career Twin What-If Lab**.
 8. **Calculates** a transparent, formula-driven **Career Readiness Score** ($0\text{--}100\%$).
 9. **Coaches** students with an AI Career Coach powered by Google Gemini with an automatic, offline-capable **Deterministic Advisory Engine** fallback.
+
+---
+
+## Product Preview
+
+### Career Readiness Dashboard
+![Career Readiness Dashboard](docs/images/dashboard.png)
+
+### Career Autopilot & Governance
+![Career Autopilot](docs/images/autopilot.png)
+
+### Evidence Graph & Provenance
+![Evidence Graph](docs/images/evidence-graph.png)
+
+### Opportunity Match
+![Opportunity Match](docs/images/opportunity-match.png)
 
 ---
 
@@ -67,7 +83,7 @@ flowchart TD
 
         subgraph Engines ["Core Intelligence Engines"]
             GapEng[Gap Engine: Priority = Gap × Weight]
-            ReadEng[Readiness Engine: 50% Prof + 25% Proof + 25% Proj]
+            ReadEng[Readiness Engine: 50% Coverage + 25% Assessments + 25% Projects]
             AutoServ[Autopilot Service & Approval Governor]
             ProofServ[Skill Proof Lab Evaluator]
             GraphServ[Evidence Graph & Trace Synthesizer]
@@ -76,13 +92,13 @@ flowchart TD
         end
 
         subgraph AI_Layer ["AI & Advisory Layer"]
-            GeminiClient[Google Gemini Client (gemini-3.8-flash)]
+            GeminiClient[Google Gemini Client via gemini-3.8-flash]
             DetFallback[Deterministic Contextual Advisory Engine]
             StatusMon[AI Provider Health & Diagnostics]
         end
 
         subgraph Persistence ["Data & Storage Layer"]
-            Store[Transactional JSON Store (Atomic Writes)]
+            Store[Transactional JSON Store with Atomic Writes]
             DataJson[(server/db/data.json)]
         end
     end
@@ -110,14 +126,14 @@ flowchart TD
 - **1-Click Autopilot Integration:** Click *"Add to Career Autopilot"* on missing gaps to immediately convert observations into governed career actions.
 
 ### 3. Skill Proof Lab (`server/services/skillProofLabService.ts`)
-- Server-authoritative practical coding challenges covering containerization, algorithms, database query tuning, and API design.
-- Rigorous static test assertions and rubric verification; rejects empty or faulty code with actionable feedback.
-- Passing work awards verified direct proof credentials (`classification: 'direct_proof'`, `confidence: 0.95`).
+- Evaluates practical coding challenges using static test assertions, structural pattern matching, and rubric verification (with automated rule-checked and AI-reviewed modes) rather than arbitrary sandboxed code execution.
+- Arbitrary untrusted student code is never executed directly; structural invariant checks verify implementations safely.
+- Passing work awards verified proof credentials (`classification: 'test-verified'` or `'rule-checked'`).
 
 ### 4. Canonical Evidence Ledger (`server/services/evidenceLedger.ts`)
-- Centralized ledger recording all verifiable credentials earned by the authenticated learner.
-- Categorized into 4 strict tiers: `direct_proof`, `assessment`, `project`, and `self_reported`.
-- Deduplication guards prevent double-crediting hours or inflating readiness on repeated submissions.
+- Centralized, deduplicated record of demonstrated skills and supporting evidence.
+- Categorized into strict verification tiers: `test-verified`, `ai-reviewed`, `rule-checked`, `human-reviewed`, and `self-reported`.
+- Attached with transparent evaluation limitations and duplicate-credit prevention guards.
 
 ### 5. Evidence Graph & Recommendation Provenance (`server/services/evidenceGraphService.ts`)
 - Interactive SVG directed graph visualizing how job requirements map to verified evidence.
@@ -134,8 +150,12 @@ flowchart TD
 
 ### 8. Career Readiness Score Engine (`server/engine/readinessEngine.ts`)
 - **Formula-Driven, Explainable Calculation:**
-  $$R = 0.50 \cdot P_{\text{demonstrated}} + 0.25 \cdot E_{\text{assessment}} + 0.25 \cdot E_{\text{project}} + B_{\text{proof}}$$
-- Zero black-box predictions; score breakdown with per-component attribution.
+  $$R = \min\left(100, \text{round}\left(S_{\text{coverage}} + B_{\text{assessment}} + B_{\text{project}}\right)\right)$$
+  - $S_{\text{coverage}} \in [0, 50]$: Demonstrated skill coverage weighted by target role importance.
+  - $B_{\text{assessment}} \in [0, 25]$: Passed server-side MCQ assessments weighted by skill importance and score.
+  - $B_{\text{project}} \in [0, 25]$: Completed milestone projects and portfolio repositories with submitted links (up to 3 projects provide full bonus).
+- Zero black-box predictions; per-component attribution breakdowns.
+- *Disclaimer:* Readiness scores are explainable estimates based on defined role requirements and recorded evidence; they do not guarantee employment or placement.
 
 ### 9. Server-Authoritative Assessments (`server/engine/assessmentEngine.ts`)
 - 9 MCQ skill assessments covering Python, React, SQL, Scikit-Learn, Docker, JavaScript, TypeScript, Pandas/NumPy, and Kubernetes.
@@ -146,7 +166,7 @@ flowchart TD
 - Generates official proof report directly from canonical server data (`GET /api/readiness/report/pdf`).
 
 ### 11. Dual-Mode AI Provider & Deterministic Fallback (`server/services/aiProviderStatus.ts`)
-- **Primary:** Google Gemini 3.8 Flash (`gemini-3.8-flash`, configurable via `GEMINI_MODEL`).
+- **Primary:** Google Gemini API integration (model configurable via `GEMINI_MODEL`, default `gemini-3.8-flash`).
 - **Offline Fallback:** High-fidelity Contextual Deterministic Advisory Engine.
 - Automatic zero-crash failover upon upstream API timeouts or quota limits.
 
@@ -162,7 +182,7 @@ flowchart TD
 | **Icons** | Lucide React (`lucide-react`) |
 | **Backend** | Node.js (v18+), Express 5, TypeScript (`tsx`) |
 | **Auth** | JSON Web Tokens (`jsonwebtoken`) + Password Hashing (`bcryptjs`) |
-| **AI Layer** | Google Gemini 3.8 Flash + Built-in Deterministic Advisory Engine |
+| **AI Layer** | Google Gemini API + Built-in Deterministic Advisory Engine |
 | **Persistence** | Transactional JSON File Store with atomic POSIX renames |
 | **Testing** | Vitest v4.1 with temporary-database isolation |
 | **Linter** | Oxlint (`oxlint`) |
@@ -191,7 +211,7 @@ npm run dev
 Open **http://localhost:3000** in your browser.
 
 ### Instant Evaluator Demo Access
-Click **"Explore Demo"** on the landing page to instantly authenticate as **Aarav Sharma** (`demo.evaluator@skillforge.ai`), pre-seeded with real engineering coursework, verified skills, and project milestones.
+Click **"Explore Demo"** on the landing page to instantly authenticate with the pre-seeded evaluation profile (**Aarav Sharma**, targeting AI/ML Engineer), pre-configured with coursework, verified skills, and project milestones. No manual registration is required.
 
 ---
 
@@ -276,7 +296,7 @@ For evaluator convenience, clicking **"Reset Demo Data"** in the top banner inst
 - **Ephemeral Cloud Storage:** On Render's free tier, filesystem changes reset when the container sleeps after 15 minutes of inactivity; persistent disk storage is documented for permanent deployments.
 - **AI Latency & Offline Fallback:** Live Gemini calls can occasionally experience upstream cloud latency; the system automatically falls back to its built-in Deterministic Advisory Engine without crashing.
 - **Static Challenge Verification:** Practical coding challenges in the Skill Proof Lab are evaluated against server-side static test assertions and rubric checks rather than privileged Docker-in-Docker containers.
-- **Single-Node Store:** The transactional JSON store supports single-process atomic writes; horizontal multi-node scaling would require PostgreSQL.
+- **Single-Node Store:** The transactional JSON store supports single-process atomic writes; horizontal multi-node scaling would require a centralized database.
 
 For full technical details, see [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md).
 
@@ -288,7 +308,7 @@ For full technical details, see [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIO
 - **Explainable by Design:** Every gap, readiness delta, and recommendation features a transparent formula and causal trace.
 - **Offline Reliability:** Built-in Deterministic Advisory Engine guarantees full demo functionality without third-party AI keys.
 - **Human-Governed Autopilot:** Career actions are never executed autonomously without student approval.
-- **Tamper-Resistant Evidence:** Practical coding challenges verify execution beyond self-attested claims.
+- **Evidence-Backed Progression:** Practical coding challenges and server-graded assessments verify execution beyond self-attested claims, tracking provenance on an interactive Evidence Graph.
 
 ---
 
