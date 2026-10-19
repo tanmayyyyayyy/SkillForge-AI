@@ -38,6 +38,8 @@ const InterviewArenaPage = React.lazy(() => import('./pages/InterviewArenaPage.j
 const ProjectForgePage = React.lazy(() => import('./pages/ProjectForgePage.js').then(m => ({ default: m.ProjectForgePage })));
 const OpportunityMatchPage = React.lazy(() => import('./pages/OpportunityMatchPage.js').then(m => ({ default: m.OpportunityMatchPage })));
 const PortfolioIntelligencePage = React.lazy(() => import('./pages/PortfolioIntelligencePage.js').then(m => ({ default: m.PortfolioIntelligencePage })));
+const AutopilotPage = React.lazy(() => import('./pages/AutopilotPage.js').then(m => ({ default: m.AutopilotPage })));
+const ReadinessExperimentPage = React.lazy(() => import('./pages/ReadinessExperimentPage.js').then(m => ({ default: m.ReadinessExperimentPage })));
 
 const PageLoader: React.FC = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -303,6 +305,28 @@ const AppRoutes: React.FC = () => {
             <ProtectedRoute>
               <AppLayout>
                 <MissionControlPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/autopilot"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <AutopilotPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/experiment"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ReadinessExperimentPage />
               </AppLayout>
             </ProtectedRoute>
           }

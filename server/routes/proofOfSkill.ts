@@ -7,8 +7,56 @@ import {
   evaluateProofOfSkill,
   getUserProofOfSkillEvidence
 } from '../services/proofOfSkillService.js';
+import { getGapChallenge, evaluateGapSubmission, recommendNextChallenge } from '../services/skillProofLabService.js';
 
 export const proofOfSkillRouter = Router();
+
+// GET a challenge driven by the student's highest-priority skill gap.
+proofOfSkillRouter.get('/gap-challenge', authMiddleware, (req: AuthenticatedRequest, res: Response): void => {
+  try {
+    const skillId = typeof req.query.skillId === 'string' ? req.query.skillId : undefined;
+    const challenge = getGapChallenge(req.userId!, skillId);
+    if (!challenge) {
+      res.status(404).json({ error: 'No skill gap found to challenge. Add a target role first.' });
+      return;
+    }
+    res.json({ challenge });
+  } catch (err) {
+    console.error('Failed to build gap challenge:', err);
+    res.status(500).json({ error: 'Failed to build a gap-driven challenge.' });
+  }
+});
+
+// POST evaluate a gap-driven submission (records evidence when it passes).
+proofOfSkillRouter.post('/gap-challenge/evaluate', authMiddleware, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const solution = readTrimmedString(req.body?.solution);
+    if (!solution) {
+      res.status(400).json({ error: 'A solution payload is required for evaluation.' });
+      return;
+    }
+    const skillId = readTrimmedString(req.body?.skillId) || undefined;
+    const result = await evaluateGapSubmission(req.userId!, solution, skillId);
+    if (!result) {
+      res.status(404).json({ error: 'No skill gap found to evaluate against.' });
+      return;
+    }
+    res.json({ result, next: recommendNextChallenge(req.userId!) });
+  } catch (err) {
+    console.error('Failed to evaluate gap submission:', err);
+    res.status(500).json({ error: 'Failed to evaluate the gap submission.' });
+  }
+});
+
+// GET the next most valuable skill to prove.
+proofOfSkillRouter.get('/next-challenge', authMiddleware, (req: AuthenticatedRequest, res: Response): void => {
+  try {
+    res.json({ next: recommendNextChallenge(req.userId!) });
+  } catch (err) {
+    console.error('Failed to recommend next challenge:', err);
+    res.status(500).json({ error: 'Failed to recommend the next challenge.' });
+  }
+});
 
 // GET all available challenges (hiding hidden test assertions from candidate)
 proofOfSkillRouter.get('/challenges', authMiddleware, (_req: AuthenticatedRequest, res: Response): void => {

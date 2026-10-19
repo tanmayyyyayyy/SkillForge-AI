@@ -17,7 +17,10 @@ import {
   MissionActionState,
   ForgedProject,
   ForgedProjectMilestone,
-  PortfolioRepoAnalysis
+  PortfolioRepoAnalysis,
+  CareerAutopilotPlan,
+  DecisionRecord,
+  ReadinessExperimentRecord
 } from '../../src/types/index.js';
 import { DEFAULT_PROJECTS } from '../data/defaultProjects.js';
 import { resolveCurrentEvidence } from '../engine/assessmentEngine.js';
@@ -39,6 +42,9 @@ interface DatabaseSchema {
   missionControlActions: Record<string, MissionControlAction[]>;
   forgedProjects: Record<string, ForgedProject[]>;
   portfolioReviews: Record<string, Record<string, PortfolioRepoAnalysis>>;
+  autopilotPlans: Record<string, CareerAutopilotPlan>;
+  decisionRecords: Record<string, DecisionRecord[]>;
+  readinessExperiments: Record<string, ReadinessExperimentRecord[]>;
 }
 
 const DEFAULT_DB_FILE = path.resolve(process.cwd(), 'server/db/data.json');
@@ -285,7 +291,10 @@ export function getDemoSeedData(): DatabaseSchema {
     missionControlDecisions: { [DEMO_USER_ID]: [] },
     missionControlActions: { [DEMO_USER_ID]: [] },
     forgedProjects: { [DEMO_USER_ID]: [] },
-    portfolioReviews: { [DEMO_USER_ID]: {} }
+    portfolioReviews: { [DEMO_USER_ID]: {} },
+    autopilotPlans: {},
+    decisionRecords: {},
+    readinessExperiments: {}
   };
 }
 
@@ -381,7 +390,10 @@ export class DatabaseStore {
       missionControlDecisions: asRecord<MissionControlDecision[]>(source.missionControlDecisions),
       missionControlActions: asRecord<MissionControlAction[]>(source.missionControlActions),
       forgedProjects: asRecord<ForgedProject[]>(source.forgedProjects),
-      portfolioReviews: asRecord<Record<string, PortfolioRepoAnalysis>>(source.portfolioReviews)
+      portfolioReviews: asRecord<Record<string, PortfolioRepoAnalysis>>(source.portfolioReviews),
+      autopilotPlans: asRecord<CareerAutopilotPlan>(source.autopilotPlans),
+      decisionRecords: asRecord<DecisionRecord[]>(source.decisionRecords),
+      readinessExperiments: asRecord<ReadinessExperimentRecord[]>(source.readinessExperiments)
     };
   }
 
@@ -483,6 +495,9 @@ export class DatabaseStore {
         if (this.data.missionControlActions[u.id]) freshSeed.missionControlActions[u.id] = this.data.missionControlActions[u.id];
         if (this.data.forgedProjects[u.id]) freshSeed.forgedProjects[u.id] = this.data.forgedProjects[u.id];
         if (this.data.portfolioReviews[u.id]) freshSeed.portfolioReviews[u.id] = this.data.portfolioReviews[u.id];
+        if (this.data.autopilotPlans[u.id]) freshSeed.autopilotPlans[u.id] = this.data.autopilotPlans[u.id];
+        if (this.data.decisionRecords[u.id]) freshSeed.decisionRecords[u.id] = this.data.decisionRecords[u.id];
+        if (this.data.readinessExperiments[u.id]) freshSeed.readinessExperiments[u.id] = this.data.readinessExperiments[u.id];
       }
       this.data = freshSeed;
     });
@@ -895,6 +910,57 @@ export class DatabaseStore {
       }
       this.data.portfolioReviews[userId][analysis.repoUrl.toLowerCase()] = analysis;
     });
+  }
+
+  // Career Autopilot operations
+  public getAutopilotPlan(userId: string): CareerAutopilotPlan | undefined {
+    return this.data.autopilotPlans[userId];
+  }
+
+  public saveAutopilotPlan(plan: CareerAutopilotPlan): void {
+    this.commit(() => {
+      this.data.autopilotPlans[plan.userId] = plan;
+    });
+  }
+
+  // Recommendation decision audit (Trust & Explainability layer)
+  public getDecisionRecords(userId: string): DecisionRecord[] {
+    const records = this.data.decisionRecords[userId];
+    return Array.isArray(records) ? records : [];
+  }
+
+  public logDecisionRecord(userId: string, record: DecisionRecord): void {
+    this.commit(() => {
+      if (!Array.isArray(this.data.decisionRecords[userId])) {
+        this.data.decisionRecords[userId] = [];
+      }
+      this.data.decisionRecords[userId].unshift(record);
+    });
+  }
+
+  // Live Readiness Experiment operations
+  public getReadinessExperiments(userId: string): ReadinessExperimentRecord[] {
+    const list = this.data.readinessExperiments[userId];
+    return Array.isArray(list) ? list : [];
+  }
+
+  public saveReadinessExperiment(record: ReadinessExperimentRecord): void {
+    this.commit(() => {
+      if (!Array.isArray(this.data.readinessExperiments[record.userId])) {
+        this.data.readinessExperiments[record.userId] = [];
+      }
+      const list = this.data.readinessExperiments[record.userId];
+      const index = list.findIndex(r => r.id === record.id);
+      if (index !== -1) {
+        list[index] = record;
+      } else {
+        list.unshift(record);
+      }
+    });
+  }
+
+  public getReadinessExperiment(userId: string, experimentId: string): ReadinessExperimentRecord | undefined {
+    return this.getReadinessExperiments(userId).find(r => r.id === experimentId);
   }
 
 }

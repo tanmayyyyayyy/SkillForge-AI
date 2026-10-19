@@ -48,7 +48,17 @@ import {
   PortfolioRepoAnalysis,
   PortfolioResumeBullet,
   AiProviderStatus,
-  AiProviderTestResult
+  AiProviderTestResult,
+  CareerAutopilotPlan,
+  DecisionRecord,
+  ReadinessExperimentRecord,
+  GapChallenge,
+  GapEvaluationResult,
+  NextChallengeSuggestion,
+  EvidenceRecord,
+  EvidenceClassification,
+  WhatIfLabResult,
+  OpportunityActionPlanResult
 } from '../types/index.js';
 import { toUserMessage } from '../utils/errorMessage.js';
 
@@ -270,6 +280,11 @@ export const api = {
       request<{ comparison: CareerTwinScenarioComparison }>('/career-twin/simulate', {
         method: 'POST',
         body: JSON.stringify({ scenarios })
+      }),
+    whatIf: (input: { weeklyHours?: number; horizonWeeks?: number } = {}) =>
+      request<{ result: WhatIfLabResult }>('/career-twin/what-if', {
+        method: 'POST',
+        body: JSON.stringify(input)
       })
   },
 
@@ -294,10 +309,15 @@ export const api = {
       request<{ trajectory: TrajectorySimulation }>('/trajectory')
   },
 
-  // Career Evidence Graph (Feature 9)
+  // Career Evidence Graph (Feature 9) + Evidence Intelligence ledger
   evidenceGraph: {
     get: () =>
-      request<{ graph: CareerEvidenceGraph }>('/evidence-graph')
+      request<{ graph: CareerEvidenceGraph }>('/evidence-graph'),
+    ledger: () =>
+      request<{
+        ledger: EvidenceRecord[];
+        summary: Record<EvidenceClassification, number>;
+      }>('/evidence-graph/ledger')
   },
 
   // AI Coach
@@ -496,5 +516,91 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(input)
       })
+  },
+
+  // SkillForge 2.0 — Career Autopilot
+  autopilot: {
+    getPlan: () =>
+      request<{ plan: CareerAutopilotPlan; decisions: DecisionRecord[] }>('/autopilot'),
+    setGoal: (goal: string) =>
+      request<{ plan: CareerAutopilotPlan; message: string }>('/autopilot/goal', {
+        method: 'POST',
+        body: JSON.stringify({ goal })
+      }),
+    replan: () =>
+      request<{ plan: CareerAutopilotPlan; message: string }>('/autopilot/replan', {
+        method: 'POST'
+      }),
+    reviewAction: (actionId: string, decision: 'approve' | 'reject' | 'start' | 'complete') =>
+      request<{ plan: CareerAutopilotPlan; message: string }>(`/autopilot/actions/${actionId}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ decision })
+      }),
+    proposeTargetRole: (roleId: string) =>
+      request<{ plan: CareerAutopilotPlan; message: string }>('/autopilot/target-role', {
+        method: 'POST',
+        body: JSON.stringify({ roleId })
+      }),
+    applyTargetRole: (actionId: string) =>
+      request<{ plan: CareerAutopilotPlan; roleId: string; message: string }>('/autopilot/target-role/apply', {
+        method: 'POST',
+        body: JSON.stringify({ actionId })
+      }),
+    getDecisions: () =>
+      request<{ decisions: DecisionRecord[] }>('/autopilot/decisions'),
+    opportunityPlan: (input: { analysisId?: string; description?: string } = {}) =>
+      request<OpportunityActionPlanResult>('/autopilot/opportunity/plan', {
+        method: 'POST',
+        body: JSON.stringify(input)
+      })
+  },
+
+  // SkillForge 2.0 — Live Readiness Experiment
+  experiment: {
+    start: (goal?: string) =>
+      request<{ experiment: ReadinessExperimentRecord }>('/experiment/start', {
+        method: 'POST',
+        body: JSON.stringify({ goal })
+      }),
+    list: () =>
+      request<{ experiments: ReadinessExperimentRecord[] }>('/experiment'),
+    get: (id: string) =>
+      request<{ experiment: ReadinessExperimentRecord }>(`/experiment/${id}`),
+    submitChallenge: (id: string, solution: string) =>
+      request<{ record: ReadinessExperimentRecord; evaluation: GapEvaluationResult }>(
+        `/experiment/${id}/challenge`,
+        { method: 'POST', body: JSON.stringify({ solution }) }
+      ),
+    submitMilestone: (id: string, evidence: { repoUrl?: string; artifactUrl?: string; notes?: string }) =>
+      request<{ record: ReadinessExperimentRecord; milestoneTitle: string; awarded: boolean }>(
+        `/experiment/${id}/milestone`,
+        { method: 'POST', body: JSON.stringify(evidence) }
+      ),
+    submitInterview: (id: string, answer: string) =>
+      request<{ record: ReadinessExperimentRecord; question: string; score?: number }>(
+        `/experiment/${id}/interview`,
+        { method: 'POST', body: JSON.stringify({ answer }) }
+      ),
+    prepareInterview: (id: string) =>
+      request<{ record: ReadinessExperimentRecord; question: string }>(`/experiment/${id}/interview`),
+    collectEvidence: (id: string) =>
+      request<{ experiment: ReadinessExperimentRecord }>(`/experiment/${id}/evidence`, { method: 'POST' }),
+    complete: (id: string) =>
+      request<{ experiment: ReadinessExperimentRecord }>(`/experiment/${id}/complete`, { method: 'POST' })
+  },
+
+  // SkillForge 2.0 — Live Skill Proof Lab
+  skillProofLab: {
+    getGapChallenge: (skillId?: string) =>
+      request<{ challenge: GapChallenge }>(
+        `/proof-of-skill/gap-challenge${skillId ? `?skillId=${encodeURIComponent(skillId)}` : ''}`
+      ),
+    evaluateGap: (solution: string, skillId?: string) =>
+      request<{ result: GapEvaluationResult; next: NextChallengeSuggestion | null }>(
+        '/proof-of-skill/gap-challenge/evaluate',
+        { method: 'POST', body: JSON.stringify({ solution, skillId }) }
+      ),
+    getNext: () =>
+      request<{ next: NextChallengeSuggestion | null }>('/proof-of-skill/next-challenge')
   }
 };

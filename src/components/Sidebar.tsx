@@ -26,7 +26,8 @@ import {
   Briefcase,
   Hammer,
   Rocket,
-  GraduationCap
+  GraduationCap,
+  FlaskConical
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -60,6 +61,13 @@ export const Sidebar: React.FC = () => {
         { to: '/roadmap', label: 'Learning Roadmap', icon: Milestone },
         { to: '/assessments', label: 'Skill Verification', icon: GraduationCap },
         { to: '/projects', label: 'Project Portfolio', icon: FolderGit2 },
+      ]
+    },
+    {
+      title: 'Autopilot',
+      items: [
+        { to: '/autopilot', label: 'Career Autopilot', icon: Compass },
+        { to: '/experiment', label: 'Live Readiness Experiment', icon: FlaskConical },
       ]
     },
     {

@@ -5,7 +5,8 @@ import {
   CareerTwinSummary,
   CareerTwinScenarioComparison,
   CareerTwinScenarioInput,
-  CareerTwinEvolutionData
+  CareerTwinEvolutionData,
+  WhatIfLabResult
 } from '../types/index.js';
 import {
   Fingerprint,
@@ -48,6 +49,8 @@ export const CareerTwinPage: React.FC = () => {
   const [focusSkills, setFocusSkills] = useState<string[]>([]);
   const [weeklyHours, setWeeklyHours] = useState(10);
   const [horizonWeeks, setHorizonWeeks] = useState(12);
+  const [whatIf, setWhatIf] = useState<WhatIfLabResult | null>(null);
+  const [isWhatIfRunning, setIsWhatIfRunning] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +103,18 @@ export const CareerTwinPage: React.FC = () => {
       toast.error(err.message || 'Failed to simulate scenarios.');
     } finally {
       setIsSimulating(false);
+    }
+  };
+
+  const runWhatIfLab = async () => {
+    try {
+      setIsWhatIfRunning(true);
+      const res = await api.careerTwin.whatIf({ weeklyHours, horizonWeeks });
+      setWhatIf(res.result);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to run the what-if lab.');
+    } finally {
+      setIsWhatIfRunning(false);
     }
   };
 
@@ -334,6 +349,83 @@ export const CareerTwinPage: React.FC = () => {
             {comparison.scenarios[0].notes.map((n, i) => (
               <div key={i} style={{ fontSize: '0.8rem', color: 'var(--warning)', marginTop: '0.4rem' }}>{n}</div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* What-If Lab: prerequisites, milestone movement, evidence gaps */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title"><Calendar size={18} color="var(--info)" /> What-If Lab</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Rule-based projection · not measured progress</span>
+        </div>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+          Compares your current pace against doubled effort and an extended horizon, using the same
+          hours and horizon as the simulator above. Prerequisites, milestone movement, and remaining
+          evidence gaps are shown explicitly.
+        </p>
+        <button className="btn btn-secondary btn-sm" disabled={isWhatIfRunning} onClick={() => void runWhatIfLab()}>
+          {isWhatIfRunning ? 'Projecting…' : 'Run What-If Lab'}
+        </button>
+
+        {whatIf && (
+          <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1.25rem' }}>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>{whatIf.comparisonSummary}</div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+              {whatIf.scenarios.map(sc => (
+                <div key={sc.scenarioId} style={{ padding: '1rem', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontWeight: 700 }}>{sc.label}</span>
+                    <span className="badge badge-medium" style={{ fontSize: '0.68rem' }}>{sc.uncertainty} uncertainty</span>
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.25rem 0 0.6rem' }}>
+                    {sc.weeklyHours} h/week · {sc.horizonWeeks} weeks · {sc.projectionBasis}
+                  </div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>
+                    {whatIf.baseReadiness}% → <span style={{ color: 'var(--success)' }}>{sc.projectedReadiness}%</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--color-accent)', marginLeft: '0.4rem' }}>+{sc.readinessDelta}</span>
+                  </div>
+
+                  {sc.skillsAffected.length > 0 && (
+                    <div style={{ marginTop: '0.6rem', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      {sc.skillsAffected.map(s => (
+                        <div key={s.skillId} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{s.name}</span>
+                          <span style={{ color: 'var(--text-muted)' }}>L{s.fromLevel} → L{s.toLevel}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {sc.blockedPrerequisites.length > 0 && (
+                    <div style={{ marginTop: '0.6rem', fontSize: '0.78rem', color: 'var(--warning)' }}>
+                      Blocked: {sc.blockedPrerequisites.join('; ')}
+                    </div>
+                  )}
+                  {sc.evidenceStillNeeded.length > 0 && (
+                    <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      Still needs evidence: {sc.evidenceStillNeeded.join(', ')}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {whatIf.prerequisites.length > 0 && (
+              <div style={{ marginTop: '1rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                <strong>Prerequisites:</strong>{' '}
+                {whatIf.prerequisites.map(p => `${p.skillName} needs ${p.missingPrerequisites.join(', ')}`).join('; ')}
+              </div>
+            )}
+
+            <div style={{ marginTop: '0.85rem', fontSize: '0.84rem', color: 'var(--text-primary)' }}>
+              <strong>{whatIf.recommendation}</strong>
+            </div>
+            <ul style={{ margin: '0.6rem 0 0', paddingLeft: '1.1rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              {whatIf.scenarios[0]?.assumptions.map((a, i) => <li key={i}>{a}</li>)}
+            </ul>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.6rem' }}>{whatIf.disclaimer}</div>
           </div>
         )}
       </div>

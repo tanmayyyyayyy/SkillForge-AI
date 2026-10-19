@@ -28,6 +28,8 @@ import { opportunityMatchRouter } from './routes/opportunityMatch.js';
 import { portfolioIntelligenceRouter } from './routes/portfolioIntelligence.js';
 import { missionControlRouter } from './routes/missionControl.js';
 import { aiProviderRouter } from './routes/aiProvider.js';
+import { autopilotRouter } from './routes/autopilot.js';
+import { experimentRouter } from './routes/experiment.js';
 
 /**
  * Builds the Express application without binding to a port.
@@ -99,6 +101,8 @@ export function createApp(): express.Express {
   app.use('/api/portfolio-intelligence', portfolioIntelligenceRouter);
   app.use('/api/mission-control', missionControlRouter);
   app.use('/api/ai-provider', aiProviderRouter);
+  app.use('/api/autopilot', autopilotRouter);
+  app.use('/api/experiment', experimentRouter);
 
   // JSON 404 for unknown API endpoints (never fall through to HTML)
   app.use('/api', (_req: Request, res: Response) => {

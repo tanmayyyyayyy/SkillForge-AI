@@ -38,7 +38,14 @@ export const DemoBanner: React.FC = () => {
           onClick={handleReset}
           disabled={isResetting}
           className="btn btn-secondary btn-sm"
-          style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem', background: 'var(--bg-card)', border: '1px solid var(--border-medium)' }}
+          style={{
+            padding: '0.25rem 0.65rem',
+            fontSize: '0.78rem',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-medium)',
+            whiteSpace: 'nowrap',
+            flexShrink: 0
+          }}
           title="Reset sample progress, assessments, and projects to original state"
         >
           <RotateCcw size={13} className={isResetting ? 'spin' : ''} />

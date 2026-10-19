@@ -1,5 +1,6 @@
 import { db } from '../db/store.js';
 import { PROOF_OF_SKILL_CHALLENGES } from '../data/proofOfSkillChallenges.js';
+import { classificationForProofRecord, limitForClassification } from './evidenceLedger.js';
 import type {
   ProofOfSkillChallenge,
   ProofOfSkillSubmission,
@@ -214,8 +215,15 @@ export async function evaluateProofOfSkill(
   const profile = db.getProfile(userId);
 
   if (result.passed && profile) {
+    // Deterministic evidence id so resubmissions cannot mint duplicate records
+    // or award duplicate credited activity for the same challenge.
+    const priorEvidence = db.getProofOfSkillEvidence(userId).find(
+      r => r.challengeId === challenge.id && r.skillId === challenge.targetSkillId
+    );
+    const isFirstEvidence = !priorEvidence;
+    const recordId = `pos_ev_${challenge.id}`;
     const evidenceRecord: ProofOfSkillEvidenceRecord = {
-      id: `pos_ev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: recordId,
       userId,
       skillId: challenge.targetSkillId,
       skillName: challenge.targetSkillName,
@@ -230,6 +238,11 @@ export async function evaluateProofOfSkill(
       passedTests: result.testResults.filter(t => t.passed).length,
       totalTests: result.testResults.length
     };
+    evidenceRecord.classification = classificationForProofRecord(evidenceRecord);
+    evidenceRecord.limitations = limitForClassification(
+      evidenceRecord.classification,
+      'Static invariant checks against curated criteria; not a full runtime test harness.'
+    );
 
     result.evidenceRecord = evidenceRecord;
 
@@ -270,15 +283,29 @@ export async function evaluateProofOfSkill(
 
       db.saveProfile(updatedProfile);
 
-      db.logActivity({
-        id: `act_${Date.now()}_pos`,
-        userId,
-        activityType: 'assessment',
-        title: `Passed Proof of Skill: ${challenge.title}`,
-        details: `Verified by automated tests — Scored ${result.scorePercentage}%.`,
-        hoursSpent: challenge.timeEstimateMinutes / 60,
-        timestamp: new Date().toISOString()
-      });
+      // Only the first passing submission for a challenge awards credited
+      // activity; a resubmission refreshes the evidence record instead.
+      if (isFirstEvidence) {
+        db.logActivity({
+          id: `act_${Date.now()}_pos`,
+          userId,
+          activityType: 'assessment',
+          title: `Passed Proof of Skill: ${challenge.title}`,
+          details: `Verified by automated tests — Scored ${result.scorePercentage}%.`,
+          hoursSpent: challenge.timeEstimateMinutes / 60,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        db.logActivity({
+          id: `act_${Date.now()}_pos_retry`,
+          userId,
+          activityType: 'assessment',
+          title: `Resubmitted Proof of Skill: ${challenge.title}`,
+          details: `New score ${result.scorePercentage}%. Evidence updated for an already-proven challenge; no duplicate credit awarded.`,
+          hoursSpent: 0,
+          timestamp: new Date().toISOString()
+        });
+      }
     });
   }
 

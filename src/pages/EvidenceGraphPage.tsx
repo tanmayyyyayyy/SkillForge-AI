@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
 import type { CareerEvidenceGraph, EvidenceGraphNode } from '../types/index.js';
-import { Network, BadgeCheck, FolderGit2, List, Share2, Flag } from 'lucide-react';
+import { Network, BadgeCheck, FolderGit2, List, Share2, Flag, GitBranch } from 'lucide-react';
 
 type GraphView = 'map' | 'list';
 
@@ -12,7 +12,10 @@ const NODE_COLORS: Record<EvidenceGraphNode['kind'], string> = {
   skill: 'var(--text-primary)',
   assessment: 'var(--success)',
   project: 'var(--color-accent)',
-  milestone: 'var(--text-secondary)'
+  milestone: 'var(--text-secondary)',
+  job_requirement: 'var(--info)',
+  objective: 'var(--color-accent)',
+  resume_claim: 'var(--warning)'
 };
 
 function nodeRoute(node: EvidenceGraphNode): { route: string; label: string } | null {
@@ -25,6 +28,12 @@ function nodeRoute(node: EvidenceGraphNode): { route: string; label: string } | 
       return { route: '/projects', label: 'Open project' };
     case 'skill':
       return { route: '/roadmap', label: 'Review skill gap' };
+    case 'job_requirement':
+      return { route: '/opportunity-match', label: 'Open opportunity match' };
+    case 'objective':
+      return { route: '/autopilot', label: 'Open autopilot' };
+    case 'resume_claim':
+      return { route: '/resume-truth', label: 'Check resume claim' };
     default:
       return null;
   }
@@ -150,6 +159,47 @@ export const EvidenceGraphPage: React.FC = () => {
         <Stat label="Self-reported" value={summary.selfReported} color="var(--text-secondary)" />
         <Stat label="Milestones" value={derived.milestones.length} color="var(--color-accent)" />
       </div>
+
+      {graph.classificationBreakdown && (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Evidence by classification:</span>
+          {Object.entries(graph.classificationBreakdown).map(([key, count]) =>
+            count ? (
+              <span key={key} className="badge" style={{ fontSize: '0.72rem' }}>
+                {key}: {count}
+              </span>
+            ) : null
+          )}
+        </div>
+      )}
+
+      {graph.trace && graph.trace.length > 0 && (
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title"><GitBranch size={16} /> Recommendation trace</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              Requirement → evidence → action → readiness
+            </span>
+          </div>
+          <ol style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', margin: 0, paddingLeft: '1.2rem' }}>
+            {graph.trace.map((step, i) => (
+              <li key={`${step.stage}-${i}`}>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{step.label}</div>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{step.detail}</div>
+                {step.refIds.length > 0 && (
+                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.3rem' }}>
+                    {step.refIds.map(ref => (
+                      <span key={ref} className="badge" style={{ fontSize: '0.66rem', background: 'var(--bg-surface)' }}>
+                        {ref}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <div role="tablist" aria-label="Evidence graph view" style={{ display: 'inline-flex', gap: '0.25rem', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', padding: '0.2rem' }}>
@@ -394,6 +444,23 @@ const NodeDetail: React.FC<{
       </div>
     )}
     {node.detail && <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.35rem' }}>{node.detail}</div>}
+    {node.classification && (
+      <div style={{ marginTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.8rem' }}>
+        <span className="badge" style={{ alignSelf: 'flex-start', fontSize: '0.7rem' }}>{node.classification}</span>
+        {node.verificationMethod && (
+          <span style={{ color: 'var(--text-secondary)' }}>Method: {node.verificationMethod}</span>
+        )}
+        {node.confidence && (
+          <span style={{ color: 'var(--text-muted)' }}>Confidence: {node.confidence}</span>
+        )}
+        {node.timestamp && (
+          <span style={{ color: 'var(--text-muted)' }}>Recorded: {new Date(node.timestamp).toLocaleDateString()}</span>
+        )}
+      </div>
+    )}
+    {node.provenance && (
+      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>{node.provenance}</div>
+    )}
     {evidence.length > 0 && (
       <div style={{ marginTop: '0.6rem' }}>
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Supported by</div>

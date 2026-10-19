@@ -1207,7 +1207,15 @@ export interface ResumeTruthDraft {
  * index as the Career Twin, so provenance labels always agree.
  * ========================================================================== */
 
-export type EvidenceNodeKind = 'skill' | 'assessment' | 'project' | 'role' | 'milestone';
+export type EvidenceNodeKind =
+  | 'skill'
+  | 'assessment'
+  | 'project'
+  | 'role'
+  | 'milestone'
+  | 'job_requirement'
+  | 'objective'
+  | 'resume_claim';
 
 export interface EvidenceGraphNode {
   id: string;
@@ -1218,19 +1226,33 @@ export interface EvidenceGraphNode {
   proficiency?: ProficiencyLevel;
   requiredLevel?: ProficiencyLevel | null;
   requiredByRole?: boolean;
-  /** Assessment / project / milestone nodes only. */
+  /** Assessment / project / milestone / job / objective / resume nodes. */
   detail?: string;
   /** Milestone (roadmap task) nodes only. */
   completed?: boolean;
   estimatedHours?: number;
   /** Source id of the underlying record, when one exists. */
   sourceId?: string;
+  /** Provenance additions (SkillForge 2.0): how this node's claim was established. */
+  verificationMethod?: string;
+  provenance?: string;
+  confidence?: 'high' | 'medium' | 'low';
+  classification?: EvidenceClassification;
+  timestamp?: string;
 }
 
 export interface EvidenceGraphEdge {
   from: string;
   to: string;
-  kind: 'verified-by' | 'demonstrated-by' | 'requires' | 'improves';
+  kind:
+    | 'verified-by'
+    | 'demonstrated-by'
+    | 'requires'
+    | 'improves'
+    | 'supported-by'
+    | 'gaps-into'
+    | 'recommends'
+    | 'targets';
 }
 
 export interface CareerEvidenceGraph {
@@ -1238,6 +1260,10 @@ export interface CareerEvidenceGraph {
   nodes: EvidenceGraphNode[];
   edges: EvidenceGraphEdge[];
   summary: EvidenceProvenance;
+  /** Per-classification counts of the underlying evidence ledger. */
+  classificationBreakdown?: Partial<Record<EvidenceClassification, number>>;
+  /** Traceable recommendation chain derived from real stored records. */
+  trace?: EvidenceTraceStep[];
   generatedAt: string;
   disclaimer: string;
 }
@@ -1419,6 +1445,10 @@ export interface ProofOfSkillEvidenceRecord {
   passedTests: number;
   totalTests: number;
   timeSpentSeconds?: number;
+  /** How this record was actually established. Never overstated. */
+  classification?: EvidenceClassification;
+  /** Honest constraints of the evaluation that produced this record. */
+  limitations?: string[];
 }
 
 /* ============================================================================
@@ -1807,5 +1837,438 @@ export interface PortfolioIntelligenceData {
   generatedAt: string;
 }
 
+/* ============================================================================
+ * SkillForge 2.0 — Trust & Explainability Layer
+ *
+ * A single shared explanation contract used by every AI-assisted or
+ * consequential recommendation (Autopilot, Readiness Experiment, Evidence
+ * Graph 2.0, Opportunity Radar). It records what is recommended and why, the
+ * user data that supports it, the assumptions, the uncertainty, what accepting
+ * it does, and whether it can be undone. It never stores secrets.
+ * ========================================================================== */
 
+/**
+ * How a piece of evidence was actually established. Ordered from weakest to
+ * strongest. Never label self-reported or AI-reviewed data as test-verified.
+ */
+export type EvidenceClassification =
+  | 'self-reported'
+  | 'ai-reviewed'
+  | 'rule-checked'
+  | 'test-verified'
+  | 'human-reviewed';
+
+/** A traceable pointer to a stored record that supports a recommendation. */
+export interface ExplainabilityReference {
+  label: string;
+  /** The system-of-record the reference came from (e.g. "Assessment", "Proof of Skill"). */
+  source: string;
+  /** Client route where the user can inspect the underlying record. */
+  url?: string;
+}
+
+/**
+ * The seven questions every significant recommendation must answer.
+ * `ifAccepted` and `reversible` make the consequence of accepting explicit.
+ */
+export interface RecommendationExplanation {
+  what: string;
+  why: string;
+  supportingData: string[];
+  supportingReferences: ExplainabilityReference[];
+  assumptions: string[];
+  uncertainties: string[];
+  ifAccepted: string;
+  reversible: boolean;
+  /** Strength of the evidence behind the underlying claim. */
+  evidenceClassification: EvidenceClassification;
+}
+
+/** A recorded, auditable decision made by the recommendation system. */
+export interface DecisionRecord {
+  id: string;
+  actionId: string;
+  recommendation: string;
+  supportingReferences: ExplainabilityReference[];
+  status: 'proposed' | 'approved' | 'rejected' | 'applied' | 'undone';
+  approvedByUser: boolean;
+  timestamp: string;
+  result?: string;
+  reversible: boolean;
+}
+
+/* ============================================================================
+ * SkillForge 2.0 — Career Autopilot
+ *
+ * An orchestrator that decomposes a career goal into a dependency-aware
+ * sequence of measurable objectives, proposes actions over existing engines
+ * and pages, requires approval for consequential actions, tracks execution,
+ * and adaptively replans while preserving completed work.
+ * ========================================================================== */
+
+export type AutopilotActionKind =
+  | 'roadmap_learning'
+  | 'assessment'
+  | 'proof_of_skill'
+  | 'project_milestone'
+  | 'interview'
+  | 'change_target_role'
+  | 'replace_plan'
+  | 'publish_portfolio'
+  | 'recalculate_readiness';
+
+export type AutopilotActionStatus =
+  | 'proposed'
+  | 'awaiting_approval'
+  | 'approved'
+  | 'in_progress'
+  | 'completed'
+  | 'rejected'
+  | 'blocked'
+  | 'superseded';
+
+export interface AutopilotObjective {
+  id: string;
+  order: number;
+  title: string;
+  /** How completion is measured objectively. */
+  measurableOutcome: string;
+  /** Objective ids that must complete first (dependency-aware ordering). */
+  prerequisiteIds: string[];
+  linkedSkillId?: string;
+  status: AutopilotActionStatus;
+}
+
+export interface AutopilotAction {
+  id: string;
+  objectiveId: string;
+  title: string;
+  kind: AutopilotActionKind;
+  /** True when executing it materially changes application state. */
+  consequential: boolean;
+  priority: PriorityBadge;
+  priorityScore: number;
+  reason: string;
+  prerequisites: string[];
+  expectedOutcome: string;
+  status: AutopilotActionStatus;
+  /** Evidence that must exist before this can be considered complete. */
+  completionEvidence: string[];
+  /** Human-readable evidence recorded so far (from real stored records). */
+  recordedEvidence: string[];
+  route: string;
+  actionLabel: string;
+  requiresApproval: boolean;
+  approvedByUser: boolean;
+  targetSkillId?: string;
+  createdAt: string;
+  updatedAt: string;
+  explanation: RecommendationExplanation;
+}
+
+export interface AutopilotChange {
+  at: string;
+  kind: 'goal_set' | 'goal_change' | 'replan' | 'completion' | 'approval' | 'rejection' | 'evidence';
+  summary: string;
+  affectedActionIds: string[];
+}
+
+export interface CareerAutopilotPlan {
+  userId: string;
+  goal: string;
+  targetRole: { id: string; title: string };
+  objectives: AutopilotObjective[];
+  actions: AutopilotAction[];
+  /** Actions whose prerequisites are not yet satisfied. */
+  blockedActionIds: string[];
+  recommendedActionId: string | null;
+  recommendationReason: string;
+  changeLog: AutopilotChange[];
+  generatedAt: string;
+  lastReplannedAt: string;
+  disclaimer: string;
+}
+
+/* ============================================================================
+ * SkillForge 2.0 — Opportunity-to-Action workflow
+ *
+ * Turns an evaluated opportunity match into approval-gated Career Autopilot
+ * actions for the highest-priority missing required skills, prioritised with
+ * the Skill Radar. Actions are proposals only until explicitly approved.
+ * ========================================================================== */
+
+export interface OpportunityActionPlanResult {
+  plan: CareerAutopilotPlan;
+  source: { analysisId?: string; jobTitle: string; company?: string };
+  matchSummary: {
+    overallSkillAlignmentPercentage: number;
+    statedRequirementsEligibility: OpportunityMatchResult['statedRequirementsEligibility'];
+    missingRequiredSkills: string[];
+  };
+  proposedActionIds: string[];
+  message: string;
+}
+
+/* ============================================================================
+ * SkillForge 2.0 — Live Career Readiness Experiment
+ *
+ * A reproducible end-to-end workflow over real persisted state: snapshot the
+ * readiness, pick the highest-priority gap, run a practical challenge, collect
+ * project evidence, ask a targeted interview question, then recalculate and
+ * explain exactly which metrics changed and which evidence supports them.
+ * Readiness is never artificially inflated.
+ * ========================================================================== */
+
+export type ExperimentStageKind =
+  | 'objective'
+  | 'snapshot'
+  | 'gap_selection'
+  | 'challenge'
+  | 'project_milestone'
+  | 'evidence_collection'
+  | 'interview'
+  | 'recalculation'
+  | 'report';
+
+export interface ExperimentStage {
+  kind: ExperimentStageKind;
+  title: string;
+  status: 'pending' | 'active' | 'completed';
+  detail: string;
+  route?: string;
+  evidenceRefs?: ExplainabilityReference[];
+}
+
+export interface ReadinessExperimentRecord {
+  id: string;
+  userId: string;
+  goal: string;
+  targetRole: { id: string; title: string };
+  status: 'running' | 'completed';
+  gapSkillId: string;
+  gapSkillName: string;
+  challengeId?: string;
+  interviewSessionId?: string;
+  interviewQuestion?: string;
+  initialReadiness: number;
+  initialBreakdown: CareerReadinessScore['breakdown'];
+  finalReadiness?: number;
+  finalBreakdown?: CareerReadinessScore['breakdown'];
+  delta?: number;
+  stages: ExperimentStage[];
+  evidenceGained: ExplainabilityReference[];
+  metricChanges: Array<{
+    metric: string;
+    before: number;
+    after: number;
+    changed: boolean;
+    explanation: string;
+  }>;
+  reportSummary: string;
+  startedAt: string;
+  completedAt?: string;
+  /** Every challenge submission, passed or not — failures are never hidden. */
+  challengeAttempts?: Array<{
+    at: string;
+    scorePercentage: number;
+    passed: boolean;
+    evaluationMethod: string;
+    evidenceClassification: EvidenceClassification;
+    feedback: string;
+  }>;
+  /** Explicit next step derived from real state (autopilot recommendation or retry). */
+  nextRecommendedAction?: {
+    label: string;
+    route: string;
+    detail: string;
+  };
+  disclaimer: string;
+}
+
+/* ============================================================================
+ * SkillForge 2.0 — Live Skill Proof Lab (gap-driven challenges)
+ * ========================================================================== */
+
+export interface GapChallenge {
+  challengeId: string;
+  skillId: string;
+  skillName: string;
+  category: string;
+  difficulty: ProofOfSkillChallenge['difficulty'];
+  objectives: string[];
+  instructions: string;
+  constraints: string[];
+  submissionFormat: string;
+  evaluationCriteria: string[];
+  requiredEvidence: string;
+  maxScore: number;
+  passingScorePercentage: number;
+  timeEstimateMinutes: number;
+  matchedStaticChallengeId?: string;
+  evaluationMethod: 'curated_static' | 'ai_reviewed_rubric' | 'rule_checked_rubric';
+}
+
+export interface GapEvaluationResult {
+  challengeId: string;
+  skillId: string;
+  skillName: string;
+  passed: boolean;
+  scorePercentage: number;
+  evaluationMethod: 'automated_test_runner' | 'static_assertion' | 'ai_rubric';
+  evidenceClassification: EvidenceClassification;
+  demonstrated: string[];
+  missing: string[];
+  feedback: string;
+  limitations: string[];
+  evidenceRecord?: ProofOfSkillEvidenceRecord;
+}
+
+export interface NextChallengeSuggestion {
+  skillId: string;
+  skillName: string;
+  priority: string;
+  reason: string;
+}
+
+/* ============================================================================
+ * SkillForge 2.0 — Canonical Evidence Ledger (Evidence Intelligence)
+ *
+ * A single, deduplicated, skill-attributed view of every stored record that can
+ * substantiate a skill claim. It does not store new data: it reads the existing
+ * systems of record (assessments, proof of skill, gap challenges, projects,
+ * Project Forge, interview sessions, roadmap tasks) and normalises each into a
+ * record that always states its source, verification method, classification,
+ * timestamp, result, and limitations. Nothing is ever upgraded to a stronger
+ * classification than the evaluation that produced it.
+ * ========================================================================== */
+
+export type EvidenceSourceKind =
+  | 'assessment'
+  | 'proof_of_skill'
+  | 'gap_challenge'
+  | 'project_evidence'
+  | 'forged_project'
+  | 'interview'
+  | 'roadmap_task';
+
+export interface EvidenceRecord {
+  /** Stable, deterministic id: `${source}:${sourceRecordId}` (plus skill for multi-skill artefacts). */
+  id: string;
+  source: EvidenceSourceKind;
+  /** Human-readable system-of-record this entry was derived from. */
+  sourceLabel: string;
+  sourceRecordId: string;
+  skillId: string;
+  skillName: string;
+  /** The actual mechanism that produced the result, e.g. "Automated test runner". */
+  verificationMethod: string;
+  classification: EvidenceClassification;
+  provenance: string;
+  observedAt: string;
+  evaluationResult: string;
+  scorePercentage?: number;
+  passed?: boolean;
+  limitations: string[];
+}
+
+/* ============================================================================
+ * SkillForge 2.0 — Evidence Graph 2.0 provenance additions
+ * ========================================================================== */
+
+export type EvidenceTraceStage =
+  | 'job_requirement'
+  | 'required_skill'
+  | 'existing_evidence'
+  | 'evidence_gap'
+  | 'recommended_action'
+  | 'new_evidence'
+  | 'updated_readiness';
+
+export interface EvidenceTraceStep {
+  stage: EvidenceTraceStage;
+  label: string;
+  detail: string;
+  refIds: string[];
+}
+
+/* ============================================================================
+ * SkillForge 2.0 — What-If Lab
+ *
+ * Extends the existing Career Twin scenario simulator with adjustable weekly
+ * hours, explicit prerequisite blocking, and a clear separation between
+ * measured state, rule-based estimates, and AI-generated suggestions.
+ * ========================================================================== */
+
+export type ProjectionBasis = 'measured' | 'rule_based' | 'ai_suggested';
+
+export interface WhatIfPrerequisite {
+  skillId: string;
+  skillName: string;
+  missingPrerequisites: string[];
+  blocking: boolean;
+}
+
+export interface WhatIfMilestoneMovement {
+  milestoneName: string;
+  targetSkill: string;
+  fromWeek: number;
+  toWeek: number;
+  moved: boolean;
+  blockedBy: string[];
+}
+
+export interface WhatIfScenarioResult {
+  scenarioId: string;
+  label: string;
+  description: string;
+  weeklyHours: number;
+  horizonWeeks: number;
+  projectedReadiness: number;
+  readinessDelta: number;
+  skillsAffected: Array<{ skillId: string; name: string; fromLevel: number; toLevel: number }>;
+  milestones: WhatIfMilestoneMovement[];
+  blockedPrerequisites: string[];
+  evidenceStillNeeded: string[];
+  uncertainty: 'High' | 'Moderate' | 'Exploratory';
+  projectionBasis: ProjectionBasis;
+  assumptions: string[];
+}
+
+export interface WhatIfLabResult {
+  targetRole: { id: string; title: string };
+  baseReadiness: number;
+  weeklyHours: number;
+  prerequisites: WhatIfPrerequisite[];
+  scenarios: WhatIfScenarioResult[];
+  recommendation: string;
+  comparisonSummary: string;
+  disclaimer: string;
+  generatedAt: string;
+}
+
+/* ============================================================================
+ * SkillForge 2.0 — Personalized Project Evolution
+ * ========================================================================== */
+
+export interface ProjectEvolutionLevel {
+  level: number;
+  title: string;
+  focus: string;
+  requiredVerifiedSkills: string[];
+  addedExpectations: string[];
+  targetDifficulty: ForgedProject['difficulty'];
+  unlocked: boolean;
+  unlockReason: string;
+}
+
+export interface ProjectEvolutionPlan {
+  projectId: string;
+  projectTitle: string;
+  currentLevel: number;
+  levels: ProjectEvolutionLevel[];
+  recommendedNextLevel: number | null;
+  recommendationReason: string;
+  explanation: RecommendationExplanation;
+  generatedAt: string;
+}
 

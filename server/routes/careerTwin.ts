@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.js';
 import { buildCareerTwin, simulateScenarios, evolveCareerTwinScenarios } from '../services/careerTwinService.js';
+import { runWhatIfLab } from '../services/whatIfLabService.js';
 import type { CareerTwinScenarioInput } from '../../src/types/index.js';
 
 export const careerTwinRouter = Router();
@@ -98,5 +99,33 @@ careerTwinRouter.post('/simulate', authMiddleware, (req: AuthenticatedRequest, r
   } catch (err) {
     console.error('Error simulating career scenarios:', err);
     res.status(500).json({ error: 'Failed to simulate scenarios.' });
+  }
+});
+
+// What-If Lab: adjustable hours/horizon with prerequisite blocking, milestone
+// movement, and evidence gaps — rule-based, never presented as measured.
+careerTwinRouter.post('/what-if', authMiddleware, (req: AuthenticatedRequest, res: Response): void => {
+  try {
+    const raw = (req.body ?? {}) as { weeklyHours?: unknown; horizonWeeks?: unknown };
+    const weeklyHours = raw.weeklyHours === undefined ? undefined : Number(raw.weeklyHours);
+    const horizonWeeks = raw.horizonWeeks === undefined ? undefined : Number(raw.horizonWeeks);
+    if (weeklyHours !== undefined && (!Number.isFinite(weeklyHours) || weeklyHours < 1 || weeklyHours > MAX_HOURS)) {
+      res.status(400).json({ error: `weeklyHours must be between 1 and ${MAX_HOURS}.` });
+      return;
+    }
+    if (horizonWeeks !== undefined && (!Number.isFinite(horizonWeeks) || horizonWeeks < 1 || horizonWeeks > MAX_WEEKS)) {
+      res.status(400).json({ error: `horizonWeeks must be between 1 and ${MAX_WEEKS}.` });
+      return;
+    }
+
+    const result = runWhatIfLab(req.userId!, { weeklyHours, horizonWeeks });
+    if (!result) {
+      res.status(404).json({ error: 'Profile not found. Complete onboarding first.' });
+      return;
+    }
+    res.json({ result });
+  } catch (err) {
+    console.error('Error running what-if lab:', err);
+    res.status(500).json({ error: 'Failed to run the what-if lab.' });
   }
 });

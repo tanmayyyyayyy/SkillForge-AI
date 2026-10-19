@@ -23,6 +23,8 @@ export const OpportunityMatchPage: React.FC = () => {
   const [jobDescription, setJobDescription] = useState<string>('');
   const [matchResult, setMatchResult] = useState<OpportunityMatchResult | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [proposing, setProposing] = useState<boolean>(false);
+  const [proposalMessage, setProposalMessage] = useState<string | null>(null);
 
   const sampleJobText = `Senior Full-Stack Engineer
 We are seeking an experienced Full Stack Engineer with strong expertise in TypeScript, React, and Node.js.
@@ -55,6 +57,23 @@ Requirements:
   const loadSample = () => {
     setJobDescription(sampleJobText);
     toast.info('Sample job description inserted.');
+  };
+
+  const proposeToAutopilot = async () => {
+    if (!jobDescription.trim()) {
+      toast.error('Paste the job description again to turn this match into actions.');
+      return;
+    }
+    try {
+      setProposing(true);
+      const res = await api.autopilot.opportunityPlan({ description: jobDescription });
+      setProposalMessage(res.message);
+      toast.success(res.message);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to turn this opportunity into actions.');
+    } finally {
+      setProposing(false);
+    }
   };
 
   return (
@@ -209,6 +228,43 @@ Requirements:
             >
               <Info size={16} color="var(--color-accent)" style={{ flexShrink: 0, marginTop: 2 }} />
               <span>{matchResult.hiringProbabilityNotice}</span>
+            </div>
+
+            {/* Opportunity → Career Autopilot actions */}
+            <div
+              style={{
+                padding: '0.85rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-subtle)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+                flexWrap: 'wrap'
+              }}
+            >
+              <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                Turn the missing required skills into approval-gated preparation actions in your
+                Career Autopilot. Nothing runs without your approval, and completion is detected
+                only from real evidence.
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={proposing}
+                  onClick={() => void proposeToAutopilot()}
+                >
+                  {proposing ? 'Adding actions…' : 'Add to Career Autopilot'}
+                </button>
+                <Link to="/autopilot" className="btn btn-ghost btn-sm">
+                  Open Autopilot <ArrowRight size={14} />
+                </Link>
+              </div>
+              {proposalMessage && (
+                <div style={{ fontSize: '0.78rem', color: 'var(--success)', width: '100%' }}>{proposalMessage}</div>
+              )}
             </div>
           </div>
 
