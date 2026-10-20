@@ -1,7 +1,13 @@
 import React, { useRef, useState } from 'react';
 import { useToast } from '../context/ToastContext.js';
 import { api } from '../services/api.js';
-import type { ResumeExtractionResult, ResumeTruthReport, ResumeClaimVerdict } from '../types/index.js';
+import type {
+  ResumeExtractionResult,
+  ResumeTruthReport,
+  ResumeClaimVerdict,
+  ResumeTruthDraft,
+  ProficiencyLevel
+} from '../types/index.js';
 import {
   ShieldCheck,
   Upload,
@@ -80,6 +86,49 @@ export const ResumeTruthPage: React.FC = () => {
     }
   };
 
+  const handleLoadSample = async () => {
+    setIsProcessing(true);
+    setFileName('Aarav_Sharma_AI_ML_Resume.pdf');
+    try {
+      const sampleDraft: ResumeTruthDraft = {
+        skills: [
+          { skillId: 'python', name: 'Python Programming', category: 'Programming', proficiency: 4 as ProficiencyLevel },
+          { skillId: 'deep-learning', name: 'Deep Learning with PyTorch', category: 'Machine Learning', proficiency: 3 as ProficiencyLevel },
+          { skillId: 'data-wrangling', name: 'Data Wrangling (NumPy & Pandas)', category: 'Data', proficiency: 4 as ProficiencyLevel },
+          { skillId: 'sql', name: 'SQL & Relational Databases', category: 'Databases', proficiency: 3 as ProficiencyLevel },
+          { skillId: 'fastapi', name: 'FastAPI & REST Model Serving', category: 'Backend', proficiency: 3 as ProficiencyLevel },
+          { skillId: 'quantum-computing', name: 'Quantum Neural Networks', category: 'Advanced', proficiency: 5 as ProficiencyLevel }
+        ],
+        projects: [
+          { title: 'Neural Style Transfer Studio', description: 'PyTorch deep learning computer vision model', technologies: ['Python', 'PyTorch'] },
+          { title: 'Distributed Log Search Engine', description: 'High throughput distributed log indexing with REST APIs', technologies: ['FastAPI', 'Python', 'SQL'] }
+        ],
+        experience: [
+          { id: 'exp-1', organization: 'AI Lab', role: 'Machine Learning Research Intern', duration: '6 mos', responsibilities: 'Model training and evaluation', skillsDemonstrated: ['Python', 'PyTorch'] }
+        ]
+      };
+      setExtraction({
+        extraction: {
+          skills: sampleDraft.skills,
+          technologies: ['Python', 'PyTorch', 'FastAPI', 'SQL'],
+          projects: sampleDraft.projects || [],
+          experience: sampleDraft.experience as any,
+          certifications: []
+        },
+        source: 'deterministic',
+        warnings: [],
+        pdf: { pageCount: 2, textLength: 1420 }
+      });
+      const check = await api.resumeTruth.check(sampleDraft);
+      setReport(check.report);
+      toast.success('Sample AI/ML Resume loaded and verified.');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to verify sample resume.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <header>
@@ -109,6 +158,16 @@ export const ResumeTruthPage: React.FC = () => {
           <button className="btn btn-primary" onClick={() => fileInputRef.current?.click()} disabled={isProcessing}>
             <Upload size={16} />
             {isProcessing ? 'Analyzing resume...' : fileName ? 'Choose a different PDF' : 'Upload PDF resume'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleLoadSample}
+            disabled={isProcessing}
+            id="load-sample-resume-btn"
+          >
+            <Sparkles size={16} />
+            Load Sample AI/ML Resume
           </button>
           {fileName && (
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
